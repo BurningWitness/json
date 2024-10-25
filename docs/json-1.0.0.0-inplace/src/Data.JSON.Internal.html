@@ -1,0 +1,60 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DataKinds
+           , DerivingStrategies
+           , GeneralizedNewtypeDeriving
+           , KindSignatures
+           , OverloadedStrings #-}</span><span>
+</span><span id="line-6"></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Data.JSON.Internal.html"><span class="hs-identifier">Data.JSON.Internal</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier">JSON</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier">JSONKey</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LB</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ByteString</span></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LT</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy.Encoding</span></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="annot"><span class="hs-comment">-- | Raw JSON value.</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">newtype</span><span> </span><span id="JSON"><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-var">JSON</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="JSON"><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-var">JSON</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">LB.ByteString</span></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679095373"><span id="local-6989586621679095377"><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-22"></span><span>  </span><span id="local-6989586621679095382"><span class="annot"><span class="annottext">showsPrec :: Int -&gt; JSON -&gt; ShowS
+</span><a href="#local-6989586621679095382"><span class="hs-identifier hs-var hs-var hs-var">showsPrec</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span> </span><span id="local-6989586621679095384"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679095384"><span class="hs-identifier hs-var">ro</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-23"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; ShowS) -&gt; (Text -&gt; String) -&gt; Text -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; String
+</span><span class="hs-identifier hs-var">LT.unpack</span></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; ShowS) -&gt; Text -&gt; ShowS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Either UnicodeException Text
+</span><span class="hs-identifier hs-var">decodeUtf8'</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679095384"><span class="hs-identifier hs-var">ro</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-24"></span><span>                               </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679095389"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679095389"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679095389"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-25"></span><span>                               </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span class="annot"><span class="annottext">UnicodeException
+</span><span class="hs-identifier">_</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-string">&quot;&lt;malformed UTF-8&gt;&quot;</span></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="annot"><span class="hs-comment">-- | Raw JSON object pair name.</span></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">newtype</span><span> </span><span id="JSONKey"><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-var">JSONKey</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="JSONKey"><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-var">JSONKey</span></a></span></span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span>
+</span><span id="line-31"></span><span>                  </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">newtype</span></span><span> </span><span id="local-6989586621679095392"><span id="local-6989586621679095396"><span id="local-6989586621679095400"><span class="annot"><span class="annottext">Int -&gt; JSONKey -&gt; ShowS
+[JSONKey] -&gt; ShowS
+JSONKey -&gt; String
+(Int -&gt; JSONKey -&gt; ShowS)
+-&gt; (JSONKey -&gt; String) -&gt; ([JSONKey] -&gt; ShowS) -&gt; Show JSONKey
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; JSONKey -&gt; ShowS
+showsPrec :: Int -&gt; JSONKey -&gt; ShowS
+$cshow :: JSONKey -&gt; String
+show :: JSONKey -&gt; String
+$cshowList :: [JSONKey] -&gt; ShowS
+showList :: [JSONKey] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span>
+</span><span id="line-32"></span></pre></body></html>

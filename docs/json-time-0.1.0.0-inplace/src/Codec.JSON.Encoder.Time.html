@@ -1,0 +1,293 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DataKinds #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="annot"><span class="hs-comment">{-| Functions for encoding common time formats in RFC 8259 JSONs.
+ -}</span></span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html"><span class="hs-identifier">Codec.JSON.Encoder.Time</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Calendar</span></span><span>
+</span><span id="line-8"></span><span>    </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#year"><span class="hs-identifier">year</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#quarter"><span class="hs-identifier">quarter</span></a></span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Month</span></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#month"><span class="hs-identifier">month</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#monthDate"><span class="hs-identifier">monthDate</span></a></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Week</span></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#weekDate"><span class="hs-identifier">weekDate</span></a></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Ordinal</span></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#ordinalDate"><span class="hs-identifier">ordinalDate</span></a></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Time of day</span></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#timeOfDay"><span class="hs-identifier">timeOfDay</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Local</span></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#localTime"><span class="hs-identifier">localTime</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Zoned</span></span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#utcTime"><span class="hs-identifier">utcTime</span></a></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#timeZone"><span class="hs-identifier">timeZone</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#zonedTime"><span class="hs-identifier">zonedTime</span></a></span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.JSON.Encoder.Unsafe</span></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Builder.Lathe.Time</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Builder</span></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.ByteString.Builder</span></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Time.Calendar</span></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Time.Calendar.Month</span></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Time.Calendar.Quarter</span></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Time.Clock</span></span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Time.LocalTime</span></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-comment">-- | Encode a year as a JSON string in ISO 8601 extended @[-&#8230;y]yyyy@ format</span><span>
+</span><span id="line-46"></span><span class="hs-comment">--</span><span>
+</span><span id="line-47"></span><span class="hs-comment">--   Compatible with RFC 3339 if the year is in the \([0,10000)\) interval.</span><span>
+</span><span id="line-48"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#year"><span class="hs-identifier hs-type">year</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Year</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-49"></span><span id="year"><span class="annot"><span class="annottext">year :: Year -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#year"><span class="hs-identifier hs-var hs-var">year</span></a></span></span><span> </span><span id="local-6989586621679042400"><span class="annot"><span class="annottext">Year
+</span><a href="#local-6989586621679042400"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Year -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.year</span></span><span> </span><span class="annot"><span class="annottext">Year
+</span><a href="#local-6989586621679042400"><span class="hs-identifier hs-var">y</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-comment">-- | Encode a year quarter as a JSON string in @[-&#8230;y]yyyy-Qq@ format.</span><span>
+</span><span id="line-54"></span><span class="hs-comment">--</span><span>
+</span><span id="line-55"></span><span class="hs-comment">--   Note that year quarters are not defined by ISO 8601, this is an informal convention.</span><span>
+</span><span id="line-56"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#quarter"><span class="hs-identifier hs-type">quarter</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Quarter</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-57"></span><span id="quarter"><span class="annot"><span class="annottext">quarter :: Quarter -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#quarter"><span class="hs-identifier hs-var hs-var">quarter</span></a></span></span><span> </span><span id="local-6989586621679042404"><span class="annot"><span class="annottext">Quarter
+</span><a href="#local-6989586621679042404"><span class="hs-identifier hs-var">q</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Quarter -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.quarter</span></span><span> </span><span class="annot"><span class="annottext">Quarter
+</span><a href="#local-6989586621679042404"><span class="hs-identifier hs-var">q</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- | Encode a month date as a JSON string, in ISO 8601 extended @[-&#8230;y]yyyy-mm@ format.</span><span>
+</span><span id="line-62"></span><span class="hs-comment">--</span><span>
+</span><span id="line-63"></span><span class="hs-comment">--   RFC 3339 compatibility matches that of the 'year' function.</span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#month"><span class="hs-identifier hs-type">month</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Month</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-65"></span><span id="month"><span class="annot"><span class="annottext">month :: Month -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#month"><span class="hs-identifier hs-var hs-var">month</span></a></span></span><span> </span><span id="local-6989586621679042406"><span class="annot"><span class="annottext">Month
+</span><a href="#local-6989586621679042406"><span class="hs-identifier hs-var">m</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Month -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.month</span></span><span> </span><span class="annot"><span class="annottext">Month
+</span><a href="#local-6989586621679042406"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span class="hs-comment">-- | Encode a month date as a JSON string in ISO 8601 extended @[-&#8230;y]yyyy-mm-dd@ format.</span><span>
+</span><span id="line-70"></span><span class="hs-comment">--</span><span>
+</span><span id="line-71"></span><span class="hs-comment">--   RFC 3339 compatibility matches that of the 'year' function.</span><span>
+</span><span id="line-72"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#monthDate"><span class="hs-identifier hs-type">monthDate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Day</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-73"></span><span id="monthDate"><span class="annot"><span class="annottext">monthDate :: Day -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#monthDate"><span class="hs-identifier hs-var hs-var">monthDate</span></a></span></span><span> </span><span id="local-6989586621679042408"><span class="annot"><span class="annottext">Day
+</span><a href="#local-6989586621679042408"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Day -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.monthDate</span></span><span> </span><span class="annot"><span class="annottext">Day
+</span><a href="#local-6989586621679042408"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span class="annot"><span class="hs-comment">-- | Encode a week date as a JSON string in ISO 8601 extended @[-&#8230;y]yyyy-Www-d@ format.</span></span><span>
+</span><span id="line-78"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#weekDate"><span class="hs-identifier hs-type">weekDate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Day</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-79"></span><span id="weekDate"><span class="annot"><span class="annottext">weekDate :: Day -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#weekDate"><span class="hs-identifier hs-var hs-var">weekDate</span></a></span></span><span> </span><span id="local-6989586621679042410"><span class="annot"><span class="annottext">Day
+</span><a href="#local-6989586621679042410"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Day -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.weekDate</span></span><span> </span><span class="annot"><span class="annottext">Day
+</span><a href="#local-6989586621679042410"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span class="annot"><span class="hs-comment">-- | Encode an ordinal date as a JSON string in ISO 8601 extended @[-&#8230;y]yyyy-ddd@ format.</span></span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#ordinalDate"><span class="hs-identifier hs-type">ordinalDate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Day</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-85"></span><span id="ordinalDate"><span class="annot"><span class="annottext">ordinalDate :: Day -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#ordinalDate"><span class="hs-identifier hs-var hs-var">ordinalDate</span></a></span></span><span> </span><span id="local-6989586621679042412"><span class="annot"><span class="annottext">Day
+</span><a href="#local-6989586621679042412"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Day -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.ordinalDate</span></span><span> </span><span class="annot"><span class="annottext">Day
+</span><a href="#local-6989586621679042412"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span class="annot"><span class="hs-comment">-- | Encode a time of day as a JSON string in RFC 3339 @hh:mm:ss[.s&#8230;]@ format.</span></span><span>
+</span><span id="line-90"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#timeOfDay"><span class="hs-identifier hs-type">timeOfDay</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">TimeOfDay</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-91"></span><span id="timeOfDay"><span class="annot"><span class="annottext">timeOfDay :: TimeOfDay -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#timeOfDay"><span class="hs-identifier hs-var hs-var">timeOfDay</span></a></span></span><span> </span><span id="local-6989586621679042414"><span class="annot"><span class="annottext">TimeOfDay
+</span><a href="#local-6989586621679042414"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">TimeOfDay -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.timeOfDay</span></span><span> </span><span class="annot"><span class="annottext">TimeOfDay
+</span><a href="#local-6989586621679042414"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span>
+</span><span id="line-95"></span><span class="hs-comment">-- | Encode a local time as a JSON string in ISO 8601 extended</span><span>
+</span><span id="line-96"></span><span class="hs-comment">--   @[-&#8230;y]yyyy-mm-ddThh:mm:ss[.s&#8230;]@ format.</span><span>
+</span><span id="line-97"></span><span class="hs-comment">--</span><span>
+</span><span id="line-98"></span><span class="hs-comment">--   RFC 3339 compatibility matches that of the 'year' function.</span><span>
+</span><span id="line-99"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#localTime"><span class="hs-identifier hs-type">localTime</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LocalTime</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-100"></span><span id="localTime"><span class="annot"><span class="annottext">localTime :: LocalTime -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#localTime"><span class="hs-identifier hs-var hs-var">localTime</span></a></span></span><span> </span><span id="local-6989586621679042416"><span class="annot"><span class="annottext">LocalTime
+</span><a href="#local-6989586621679042416"><span class="hs-identifier hs-var">l</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">LocalTime -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.localTime</span></span><span> </span><span class="annot"><span class="annottext">LocalTime
+</span><a href="#local-6989586621679042416"><span class="hs-identifier hs-var">l</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- | Encode a UTC time as a JSON string in ISO 8601 extended</span><span>
+</span><span id="line-105"></span><span class="hs-comment">--   @[-&#8230;y]yyyy-mm-ddThh:mm:ss[.s&#8230;]Z@ format.</span><span>
+</span><span id="line-106"></span><span class="hs-comment">--</span><span>
+</span><span id="line-107"></span><span class="hs-comment">--   RFC 3339 compatibility matches that of the 'year' function.</span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#utcTime"><span class="hs-identifier hs-type">utcTime</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">UTCTime</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-109"></span><span id="utcTime"><span class="annot"><span class="annottext">utcTime :: UTCTime -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#utcTime"><span class="hs-identifier hs-var hs-var">utcTime</span></a></span></span><span> </span><span id="local-6989586621679042418"><span class="annot"><span class="annottext">UTCTime
+</span><a href="#local-6989586621679042418"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">UTCTime -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.utcTime</span></span><span> </span><span class="annot"><span class="annottext">UTCTime
+</span><a href="#local-6989586621679042418"><span class="hs-identifier hs-var">u</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span class="hs-comment">-- | Encode a time zone as a JSON string in ISO 8601 extended @&#177;[&#8230;h]hh:mm@ format.</span><span>
+</span><span id="line-114"></span><span class="hs-comment">--</span><span>
+</span><span id="line-115"></span><span class="hs-comment">--   Compatible with RFC 3339 if the minute offset from UTC is</span><span>
+</span><span id="line-116"></span><span class="hs-comment">--   in the \((-24 \cdot 60, 24 \cdot 60)\) interval.</span><span>
+</span><span id="line-117"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#timeZone"><span class="hs-identifier hs-type">timeZone</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">TimeZone</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-118"></span><span id="timeZone"><span class="annot"><span class="annottext">timeZone :: TimeZone -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#timeZone"><span class="hs-identifier hs-var hs-var">timeZone</span></a></span></span><span> </span><span id="local-6989586621679042420"><span class="annot"><span class="annottext">TimeZone
+</span><a href="#local-6989586621679042420"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">TimeZone -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.timeZone</span></span><span> </span><span class="annot"><span class="annottext">TimeZone
+</span><a href="#local-6989586621679042420"><span class="hs-identifier hs-var">t</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span class="hs-comment">-- | Encode a zoned time as a JSON string in ISO 8601 extended</span><span>
+</span><span id="line-123"></span><span class="hs-comment">--   @[-&#8230;y]yyyy-mm-ddThh:mm:ss[.s&#8230;]&#177;[&#8230;h]hh:mm@ format.</span><span>
+</span><span id="line-124"></span><span class="hs-comment">--</span><span>
+</span><span id="line-125"></span><span class="hs-comment">--   RFC 3339 compatibility matches that of both the 'year' and 'timeZone' functions.</span><span>
+</span><span id="line-126"></span><span class="annot"><a href="Codec.JSON.Encoder.Time.html#zonedTime"><span class="hs-identifier hs-type">zonedTime</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ZonedTime</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-127"></span><span id="zonedTime"><span class="annot"><span class="annottext">zonedTime :: ZonedTime -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Time.html#zonedTime"><span class="hs-identifier hs-var hs-var">zonedTime</span></a></span></span><span> </span><span id="local-6989586621679042422"><span class="annot"><span class="annottext">ZonedTime
+</span><a href="#local-6989586621679042422"><span class="hs-identifier hs-var">z</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">ZonedTime -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.zonedTime</span></span><span> </span><span class="annot"><span class="annottext">ZonedTime
+</span><a href="#local-6989586621679042422"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-128"></span></pre></body></html>

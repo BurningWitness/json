@@ -1,0 +1,536 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-pragma">{-# OPTIONS_HADDOCK hide #-}</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Number.Internal</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Whole"><span class="hs-identifier">Whole</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Digit"><span class="hs-identifier">Digit</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#wholeP"><span class="hs-identifier">wholeP</span></a></span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#fracP"><span class="hs-identifier">fracP</span></a></span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Exp"><span class="hs-identifier">Exp</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#expP"><span class="hs-identifier">expP</span></a></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#negativeZeroP"><span class="hs-identifier">negativeZeroP</span></a></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#intExponentP"><span class="hs-identifier">intExponentP</span></a></span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#skipExponentP"><span class="hs-identifier">skipExponentP</span></a></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Internal</span></a></span><span>
+</span><span id="line-21"></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Bits</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Word</span></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe.Binary</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe.Numeric.Integral</span></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe.Radix</span></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">data</span><span> </span><span id="Whole"><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Whole"><span class="hs-identifier hs-var">Whole</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Whole"><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Whole"><span class="hs-identifier hs-var">Whole</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Sign</span></span><span> </span><span class="hs-pragma">{-# UNPACK</span><span> </span><span class="hs-pragma">#-}</span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Digit"><span class="hs-identifier hs-type">Digit</span></a></span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">data</span><span> </span><span id="Digit"><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Digit"><span class="hs-identifier hs-var">Digit</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="NonZero"><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#NonZero"><span class="hs-identifier hs-var">NonZero</span></a></span></span><span> </span><span class="hs-pragma">{-# UNPACK</span><span> </span><span class="hs-pragma">#-}</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span>
+</span><span id="line-34"></span><span>           </span><span class="hs-glyph">|</span><span> </span><span id="Zero"><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Zero"><span class="hs-identifier hs-var">Zero</span></a></span></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- | Parses the sign and the first digit of the integral part of the JSON number.</span><span>
+</span><span id="line-37"></span><span class="hs-comment">--   Fails if the first digit is a zero followed by another digit.</span><span>
+</span><span id="line-38"></span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#wholeP"><span class="hs-identifier hs-type">wholeP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Whole"><span class="hs-identifier hs-type">Whole</span></a></span><span>
+</span><span id="line-39"></span><span id="wholeP"><span class="annot"><span class="annottext">wholeP :: Path -&gt; Parser (Path, Error) Whole
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#wholeP"><span class="hs-identifier hs-var hs-var">wholeP</span></a></span></span><span> </span><span id="local-6989586621679097152"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097152"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) Whole
+</span><a href="#local-6989586621679097153"><span class="hs-identifier hs-var">optionalMinus</span></a></span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-41"></span><span>    </span><span id="local-6989586621679097153"><span class="annot"><span class="annottext">optionalMinus :: Parser (Path, Error) Whole
+</span><a href="#local-6989586621679097153"><span class="hs-identifier hs-var hs-var">optionalMinus</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-42"></span><span>      </span><span id="local-6989586621679097158"><span class="annot"><a href="#local-6989586621679097158"><span class="hs-identifier hs-var">w0</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Word8
+forall end. end -&gt; Parser end Word8
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097152"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><a href="Codec.JSON.Decoder.Internal.html#AbruptEnd"><span class="hs-identifier hs-var">AbruptEnd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679097158"><span class="hs-identifier hs-type">w0</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-44"></span><span>        </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x2D</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-45"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679097161"><span class="annot"><span class="annottext">str :: String
+</span><a href="#local-6989586621679097161"><span class="hs-identifier hs-var hs-var hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Minus sign must be followed by at least one digit&quot;</span></span><span>
+</span><span id="line-46"></span><span>          </span><span id="local-6989586621679097162"><span class="annot"><a href="#local-6989586621679097162"><span class="hs-identifier hs-var">w1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Word8
+forall end. end -&gt; Parser end Word8
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097152"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-var">Malformed</span></a></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><a href="Codec.JSON.Decoder.Internal.html#Fatal"><span class="hs-identifier hs-var">Fatal</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679097161"><span class="hs-identifier hs-var">str</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-47"></span><span>          </span><span class="annot"><a href="#local-6989586621679097165"><span class="hs-identifier hs-type">int</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Minus</span></span><span> </span><span class="annot"><a href="#local-6989586621679097162"><span class="hs-identifier hs-type">w1</span></a></span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span>        </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Word8 -&gt; Parser (Path, Error) Whole
+</span><a href="#local-6989586621679097165"><span class="hs-identifier hs-var">int</span></a></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><span class="hs-identifier hs-var">Plus</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097158"><span class="hs-identifier hs-var">w0</span></a></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span>    </span><span id="local-6989586621679097165"><span class="annot"><span class="annottext">int :: Sign -&gt; Word8 -&gt; Parser (Path, Error) Whole
+</span><a href="#local-6989586621679097165"><span class="hs-identifier hs-var hs-var">int</span></a></span></span><span> </span><span id="local-6989586621679097171"><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097171"><span class="hs-identifier hs-var">sign</span></a></span></span><span> </span><span id="local-6989586621679097172"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097172"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-53"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Maybe Word8
+</span><span class="hs-identifier hs-var">dec</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097172"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-54"></span><span>        </span><span class="annot"><span class="annottext">Maybe Word8
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-55"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679097174"><span class="annot"><span class="annottext">str :: String
+</span><a href="#local-6989586621679097174"><span class="hs-identifier hs-var hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Expected a minus or a digit&quot;</span></span><span>
+</span><span id="line-56"></span><span>          </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Whole
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097152"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-var">Malformed</span></a></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><a href="Codec.JSON.Decoder.Internal.html#Fatal"><span class="hs-identifier hs-var">Fatal</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679097174"><span class="hs-identifier hs-var">str</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679097176"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097176"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-59"></span><span>          </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097176"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-60"></span><span>            </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Parser (Path, Error) Whole
+</span><a href="#local-6989586621679097177"><span class="hs-identifier hs-var">leadingZeroCheck</span></a></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097171"><span class="hs-identifier hs-var">sign</span></a></span><span>
+</span><span id="line-61"></span><span>            </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Whole -&gt; Parser (Path, Error) Whole
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Whole -&gt; Parser (Path, Error) Whole)
+-&gt; Whole -&gt; Parser (Path, Error) Whole
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Digit -&gt; Whole
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#Whole"><span class="hs-identifier hs-var">Whole</span></a></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097171"><span class="hs-identifier hs-var">sign</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8 -&gt; Digit
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#NonZero"><span class="hs-identifier hs-var">NonZero</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097176"><span class="hs-identifier hs-var">i</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span>    </span><span id="local-6989586621679097177"><span class="annot"><span class="annottext">leadingZeroCheck :: Sign -&gt; Parser (Path, Error) Whole
+</span><a href="#local-6989586621679097177"><span class="hs-identifier hs-var hs-var">leadingZeroCheck</span></a></span></span><span> </span><span id="local-6989586621679097180"><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097180"><span class="hs-identifier hs-var">sign</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-65"></span><span>      </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679097181"><span class="annot"><a href="#local-6989586621679097181"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Parser Bool Word8
+forall end. end -&gt; Parser end Word8
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-66"></span><span>           </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$!</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">True</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">dec</span></span><span> </span><span class="annot"><a href="#local-6989586621679097181"><span class="hs-identifier hs-type">w</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>      </span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>        </span><span class="annot"><span class="annottext">Parser Bool Whole
+-&gt; (Bool -&gt; Parser (Path, Error) Whole)
+-&gt; Parser (Path, Error) Whole
+forall e a x. Parser e a -&gt; (e -&gt; Parser x a) -&gt; Parser x a
+</span><span class="hs-operator hs-var">`catch`</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679097185"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679097185"><span class="hs-identifier hs-var">good</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-69"></span><span>          </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679097185"><span class="hs-identifier hs-var">good</span></a></span><span>
+</span><span id="line-70"></span><span>            </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Whole -&gt; Parser (Path, Error) Whole
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Whole -&gt; Parser (Path, Error) Whole)
+-&gt; Whole -&gt; Parser (Path, Error) Whole
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Digit -&gt; Whole
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#Whole"><span class="hs-identifier hs-var">Whole</span></a></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097180"><span class="hs-identifier hs-var">sign</span></a></span><span> </span><span class="annot"><span class="annottext">Digit
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#Zero"><span class="hs-identifier hs-var">Zero</span></a></span><span>
+</span><span id="line-71"></span><span>            </span><span class="hs-keyword">else</span><span> </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679097186"><span class="annot"><span class="annottext">str :: String
+</span><a href="#local-6989586621679097186"><span class="hs-identifier hs-var hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Leading zeroes are not allowed&quot;</span></span><span>
+</span><span id="line-72"></span><span>                 </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Whole
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097152"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-var">Malformed</span></a></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><a href="Codec.JSON.Decoder.Internal.html#Fatal"><span class="hs-identifier hs-var">Fatal</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679097186"><span class="hs-identifier hs-var">str</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span class="annot"><span class="hs-comment">-- | Checks if the number is fractional, consuming the dot character.</span></span><span>
+</span><span id="line-77"></span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#fracP"><span class="hs-identifier hs-type">fracP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span>
+</span><span id="line-78"></span><span id="fracP"><span class="annot"><span class="annottext">fracP :: Path -&gt; Parser (Path, Error) Bool
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#fracP"><span class="hs-identifier hs-var hs-var">fracP</span></a></span></span><span> </span><span id="local-6989586621679097187"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097187"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-79"></span><span>  </span><span id="local-6989586621679097188"><span class="annot"><a href="#local-6989586621679097188"><span class="hs-identifier hs-var">dot</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679097189"><span class="annot"><a href="#local-6989586621679097189"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Parser Bool Word8
+forall end. end -&gt; Parser end Word8
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-80"></span><span>              </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679097189"><span class="hs-identifier hs-type">w</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">==</span></span><span> </span><span class="annot"><span class="hs-number">0x2E</span></span><span>
+</span><span id="line-81"></span><span>                </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">True</span></span><span>
+</span><span id="line-82"></span><span>                </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">False</span></span><span>
+</span><span id="line-83"></span><span>         </span><span class="hs-special">)</span><span>
+</span><span id="line-84"></span><span>           </span><span class="annot"><span class="annottext">Parser Bool Bool
+-&gt; (Bool -&gt; Parser (Path, Error) Bool) -&gt; Parser (Path, Error) Bool
+forall e a x. Parser e a -&gt; (e -&gt; Parser x a) -&gt; Parser x a
+</span><span class="hs-operator hs-var">`catch`</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Parser (Path, Error) Bool
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679097188"><span class="hs-identifier hs-type">dot</span></a></span><span>
+</span><span id="line-87"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679097190"><span class="annot"><a href="#local-6989586621679097190"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">word8</span></span><span> </span><span class="annot"><span class="hs-number">0x00</span></span><span>
+</span><span id="line-88"></span><span>              </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="annot"><a href="#local-6989586621679097190"><span class="hs-identifier hs-type">w</span></a></span><span>
+</span><span id="line-89"></span><span>         </span><span class="hs-special">)</span><span>
+</span><span id="line-90"></span><span>           </span><span class="annot"><span class="hs-operator hs-type">`catch`</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679097191"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097191"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-91"></span><span>             </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Maybe Word8
+</span><span class="hs-identifier hs-var">dec</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097191"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-92"></span><span>               </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Parser (Path, Error) Bool
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-93"></span><span>               </span><span class="annot"><span class="annottext">Maybe Word8
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-94"></span><span>                 </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679097192"><span class="annot"><span class="annottext">str :: String
+</span><a href="#local-6989586621679097192"><span class="hs-identifier hs-var hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Decimal point must be followed by at least one digit&quot;</span></span><span>
+</span><span id="line-95"></span><span>                 </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Bool
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097187"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-var">Malformed</span></a></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><a href="Codec.JSON.Decoder.Internal.html#Fatal"><span class="hs-identifier hs-var">Fatal</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679097192"><span class="hs-identifier hs-var">str</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">False</span></span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span class="hs-keyword">data</span><span> </span><span id="Exp"><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Exp"><span class="hs-identifier hs-var">Exp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="NoExp"><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#NoExp"><span class="hs-identifier hs-var">NoExp</span></a></span></span><span>
+</span><span id="line-102"></span><span>         </span><span class="hs-glyph">|</span><span> </span><span id="Exp"><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Exp"><span class="hs-identifier hs-var">Exp</span></a></span></span><span> </span><span class="hs-pragma">{-# UNPACK</span><span> </span><span class="hs-pragma">#-}</span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Sign</span></span><span> </span><span class="hs-pragma">{-# UNPACK</span><span> </span><span class="hs-pragma">#-}</span><span> </span><span class="hs-glyph">!</span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Digit"><span class="hs-identifier hs-type">Digit</span></a></span><span>
+</span><span id="line-103"></span><span>
+</span><span id="line-104"></span><span class="hs-comment">-- | Checks if the number has an exponent; if yes, consumes the letter E,</span><span>
+</span><span id="line-105"></span><span class="hs-comment">--   optional sign and the first digit.</span><span>
+</span><span id="line-106"></span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#expP"><span class="hs-identifier hs-type">expP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Exp"><span class="hs-identifier hs-type">Exp</span></a></span><span>
+</span><span id="line-107"></span><span id="expP"><span class="annot"><span class="annottext">expP :: Path -&gt; Parser (Path, Error) Exp
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#expP"><span class="hs-identifier hs-var hs-var">expP</span></a></span></span><span> </span><span id="local-6989586621679097195"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097195"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-108"></span><span>  </span><span id="local-6989586621679097196"><span class="annot"><a href="#local-6989586621679097196"><span class="hs-identifier hs-var">isExp</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679097197"><span class="annot"><a href="#local-6989586621679097197"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Parser Bool Word8
+forall end. end -&gt; Parser end Word8
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-109"></span><span>                </span><span class="hs-keyword">if</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679097197"><span class="hs-identifier hs-type">w</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">.&amp;.</span></span><span> </span><span class="annot"><span class="hs-number">0xDF</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-operator hs-type">==</span></span><span> </span><span class="annot"><span class="hs-number">0x45</span></span><span>
+</span><span id="line-110"></span><span>                  </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">True</span></span><span>
+</span><span id="line-111"></span><span>                  </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">False</span></span><span>
+</span><span id="line-112"></span><span>           </span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>             </span><span class="annot"><span class="annottext">Parser Bool Bool
+-&gt; (Bool -&gt; Parser (Path, Error) Bool) -&gt; Parser (Path, Error) Bool
+forall e a x. Parser e a -&gt; (e -&gt; Parser x a) -&gt; Parser x a
+</span><span class="hs-operator hs-var">`catch`</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Parser (Path, Error) Bool
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span>
+</span><span id="line-114"></span><span>
+</span><span id="line-115"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679097196"><span class="hs-identifier hs-type">isExp</span></a></span><span>
+</span><span id="line-116"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-117"></span><span>      </span><span id="local-6989586621679097199"><span class="annot"><a href="#local-6989586621679097199"><span class="hs-identifier hs-var">sign</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679097200"><span class="annot"><a href="#local-6989586621679097200"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">word8</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Plus</span></span><span>
+</span><span id="line-118"></span><span>                   </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679097200"><span class="hs-identifier hs-type">w</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-119"></span><span>                     </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x2B</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Parser Sign Sign
+forall a. a -&gt; Parser Sign a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><span class="hs-identifier hs-var">Plus</span></span><span>
+</span><span id="line-120"></span><span>                     </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x2D</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Parser Sign Sign
+forall a. a -&gt; Parser Sign a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><span class="hs-identifier hs-var">Minus</span></span><span>
+</span><span id="line-121"></span><span>                     </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Parser Sign Sign
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><span class="hs-identifier hs-var">Plus</span></span><span>
+</span><span id="line-122"></span><span>              </span><span class="hs-special">)</span><span>
+</span><span id="line-123"></span><span>                </span><span class="annot"><span class="hs-operator hs-type">`catch`</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679097201"><span class="annot"><a href="#local-6989586621679097201"><span class="hs-identifier hs-var hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Exponent letter and optional sign must be followed by at least one digit&quot;</span></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span>      </span><span id="local-6989586621679097202"><span class="annot"><a href="#local-6989586621679097202"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">word8</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679097195"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#AbruptEnd"><span class="hs-identifier hs-type">AbruptEnd</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-128"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="hs-identifier hs-type">dec</span></span><span> </span><span class="annot"><a href="#local-6989586621679097202"><span class="hs-identifier hs-type">w</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-129"></span><span>        </span><span class="annot"><span class="annottext">Maybe Word8
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Exp
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097195"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-var">Malformed</span></a></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><a href="Codec.JSON.Decoder.Internal.html#Fatal"><span class="hs-identifier hs-var">Fatal</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679097201"><span class="hs-identifier hs-var">str</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679097203"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097203"><span class="hs-identifier hs-var">i</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Exp -&gt; Parser (Path, Error) Exp
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Exp -&gt; Parser (Path, Error) Exp)
+-&gt; Exp -&gt; Parser (Path, Error) Exp
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Digit -&gt; Exp
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#Exp"><span class="hs-identifier hs-var">Exp</span></a></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097199"><span class="hs-identifier hs-var">sign</span></a></span><span> </span><span class="annot"><span class="annottext">(Digit -&gt; Exp) -&gt; Digit -&gt; Exp
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097203"><span class="hs-identifier hs-var">i</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">==</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-131"></span><span>                                       </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Digit
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#Zero"><span class="hs-identifier hs-var">Zero</span></a></span><span>
+</span><span id="line-132"></span><span>                                       </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Digit
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#NonZero"><span class="hs-identifier hs-var">NonZero</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097203"><span class="hs-identifier hs-var">i</span></a></span><span>
+</span><span id="line-133"></span><span>
+</span><span id="line-134"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#NoExp"><span class="hs-identifier hs-type">NoExp</span></a></span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span class="annot"><span class="hs-comment">-- | Knowing that the number is negative, cull anything that isn't zero.</span></span><span>
+</span><span id="line-139"></span><span id="local-6989586621679097056"><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#negativeZeroP"><span class="hs-identifier hs-type">negativeZeroP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Digit"><span class="hs-identifier hs-type">Digit</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679097056"><span class="hs-identifier hs-type">z</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679097056"><span class="hs-identifier hs-type">z</span></a></span></span><span>
+</span><span id="line-140"></span><span id="negativeZeroP"><span class="annot"><span class="annottext">negativeZeroP :: forall z. Path -&gt; Digit -&gt; z -&gt; Parser (Path, Error) z
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#negativeZeroP"><span class="hs-identifier hs-var hs-var">negativeZeroP</span></a></span></span><span> </span><span id="local-6989586621679097211"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097211"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679097212"><span class="annot"><span class="annottext">Digit
+</span><a href="#local-6989586621679097212"><span class="hs-identifier hs-var">digit</span></a></span></span><span> </span><span id="local-6989586621679097213"><span class="annot"><span class="annottext">z
+</span><a href="#local-6989586621679097213"><span class="hs-identifier hs-var">z</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-141"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679097214"><span class="annot"><span class="annottext">nonNegIntegral :: String
+</span><a href="#local-6989586621679097214"><span class="hs-identifier hs-var hs-var">nonNegIntegral</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Expected a non-negative integral number&quot;</span></span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Digit
+</span><a href="#local-6989586621679097212"><span class="hs-identifier hs-var">digit</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-144"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#NonZero"><span class="hs-identifier hs-type">NonZero</span></a></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) z
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097211"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-var">Malformed</span></a></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><a href="Codec.JSON.Decoder.Internal.html#Benign"><span class="hs-identifier hs-var">Benign</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679097214"><span class="hs-identifier hs-var">nonNegIntegral</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-145"></span><span>    </span><span class="annot"><span class="annottext">Digit
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#Zero"><span class="hs-identifier hs-var">Zero</span></a></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-146"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679097221"><span class="annot"><span class="annottext">digits :: Parser (Path, Error) ()
+</span><a href="#local-6989586621679097221"><span class="hs-identifier hs-var hs-var hs-var">digits</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-147"></span><span>            </span><span class="annot"><span class="annottext">(Word8 -&gt; Bool) -&gt; Parser (Path, Error) ()
+forall never. (Word8 -&gt; Bool) -&gt; Parser never ()
+</span><span class="hs-identifier hs-var">skipUntilEndOr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x30</span></span><span class="hs-special">)</span><span>
+</span><span id="line-148"></span><span>            </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679097224"><span class="annot"><a href="#local-6989586621679097224"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Parser Bool Word8
+forall end. end -&gt; Parser end Word8
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span>
+</span><span id="line-149"></span><span>                 </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$!</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">True</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">dec</span></span><span> </span><span class="annot"><a href="#local-6989586621679097224"><span class="hs-identifier hs-type">w</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-150"></span><span>             </span><span class="hs-special">)</span><span>
+</span><span id="line-151"></span><span>              </span><span class="annot"><span class="annottext">Parser Bool ()
+-&gt; (Bool -&gt; Parser (Path, Error) ()) -&gt; Parser (Path, Error) ()
+forall e a x. Parser e a -&gt; (e -&gt; Parser x a) -&gt; Parser x a
+</span><span class="hs-operator hs-var">`catch`</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679097225"><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679097225"><span class="hs-identifier hs-var">good</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-152"></span><span>                </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><a href="#local-6989586621679097225"><span class="hs-identifier hs-var">good</span></a></span><span>
+</span><span id="line-153"></span><span>                  </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">() -&gt; Parser (Path, Error) ()
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-154"></span><span>                  </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) ()
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097211"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-var">Malformed</span></a></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><a href="Codec.JSON.Decoder.Internal.html#Benign"><span class="hs-identifier hs-var">Benign</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679097214"><span class="hs-identifier hs-var">nonNegIntegral</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-155"></span><span>
+</span><span id="line-156"></span><span>      </span><span id="local-6989586621679097226"><span class="annot"><a href="#local-6989586621679097226"><span class="hs-identifier hs-var">hasFrac</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) Bool
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#fracP"><span class="hs-identifier hs-var">fracP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097211"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-157"></span><span>      </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679097226"><span class="hs-identifier hs-type">hasFrac</span></a></span><span>
+</span><span id="line-158"></span><span>        </span><span class="hs-keyword">then</span><span> </span><span class="annot"><a href="#local-6989586621679097221"><span class="hs-identifier hs-type">digits</span></a></span><span>
+</span><span id="line-159"></span><span>        </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span>      </span><span id="local-6989586621679097227"><span class="annot"><a href="#local-6989586621679097227"><span class="hs-identifier hs-var">e</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#expP"><span class="hs-identifier hs-type">expP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679097211"><span class="hs-identifier hs-type">path</span></a></span><span>
+</span><span id="line-162"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679097227"><span class="hs-identifier hs-type">e</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-163"></span><span>        </span><span class="annot"><span class="annottext">Exp
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#NoExp"><span class="hs-identifier hs-var">NoExp</span></a></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">z -&gt; Parser (Path, Error) z
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">z
+</span><a href="#local-6989586621679097213"><span class="hs-identifier hs-var">z</span></a></span><span>
+</span><span id="line-164"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Exp"><span class="hs-identifier hs-type">Exp</span></a></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Digit
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">z
+</span><a href="#local-6989586621679097213"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="annot"><span class="annottext">z -&gt; Parser (Path, Error) () -&gt; Parser (Path, Error) z
+forall a b. a -&gt; Parser (Path, Error) b -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">(Word8 -&gt; Bool) -&gt; Parser (Path, Error) ()
+forall never. (Word8 -&gt; Bool) -&gt; Parser never ()
+</span><span class="hs-identifier hs-var">skipUntilEndOr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Bool -&gt; (Word8 -&gt; Bool) -&gt; Maybe Word8 -&gt; Bool
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Maybe Word8 -&gt; Bool) -&gt; (Word8 -&gt; Maybe Word8) -&gt; Word8 -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Maybe Word8
+</span><span class="hs-identifier hs-var">dec</span></span><span class="hs-special">)</span><span>
+</span><span id="line-165"></span><span>
+</span><span id="line-166"></span><span>
+</span><span id="line-167"></span><span>
+</span><span id="line-168"></span><span class="annot"><span class="hs-comment">-- | Parses any exponent that fits into an 'Int'.</span></span><span>
+</span><span id="line-169"></span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#intExponentP"><span class="hs-identifier hs-type">intExponentP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Sign</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span class="hs-special">)</span><span>
+</span><span id="line-170"></span><span id="intExponentP"><span class="annot"><span class="annottext">intExponentP :: Path -&gt; Parser (Path, Error) (Either Sign Int)
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#intExponentP"><span class="hs-identifier hs-var hs-var">intExponentP</span></a></span></span><span> </span><span id="local-6989586621679097230"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097230"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-171"></span><span>  </span><span id="local-6989586621679097231"><span class="annot"><a href="#local-6989586621679097231"><span class="hs-identifier hs-var">ex</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) Exp
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#expP"><span class="hs-identifier hs-var">expP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097230"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-172"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679097231"><span class="hs-identifier hs-type">ex</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-173"></span><span>    </span><span class="annot"><span class="annottext">Exp
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#NoExp"><span class="hs-identifier hs-var">NoExp</span></a></span><span>          </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either Sign Int -&gt; Parser (Path, Error) (Either Sign Int)
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Either Sign Int -&gt; Parser (Path, Error) (Either Sign Int))
+-&gt; Either Sign Int -&gt; Parser (Path, Error) (Either Sign Int)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Either Sign Int
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-174"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Exp"><span class="hs-identifier hs-type">Exp</span></a></span><span> </span><span id="local-6989586621679097232"><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097232"><span class="hs-identifier hs-var">sign</span></a></span></span><span> </span><span id="local-6989586621679097233"><span class="annot"><span class="annottext">Digit
+</span><a href="#local-6989586621679097233"><span class="hs-identifier hs-var">digit</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-175"></span><span>      </span><span id="local-6989586621679097234"><span class="annot"><a href="#local-6989586621679097234"><span class="hs-identifier hs-var">i</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Digit
+</span><a href="#local-6989586621679097233"><span class="hs-identifier hs-var">digit</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-176"></span><span>             </span><span class="annot"><span class="annottext">Digit
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#Zero"><span class="hs-identifier hs-var">Zero</span></a></span><span>      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-177"></span><span>               </span><span class="annot"><span class="annottext">(Word8 -&gt; Bool) -&gt; Parser (Path, Error) ()
+forall never. (Word8 -&gt; Bool) -&gt; Parser never ()
+</span><span class="hs-identifier hs-var">skipUntilEndOr</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word8 -&gt; Word8 -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x30</span></span><span class="hs-special">)</span><span>
+</span><span id="line-178"></span><span>               </span><span id="local-6989586621679097235"><span class="annot"><a href="#local-6989586621679097235"><span class="hs-identifier hs-var">more</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-special">(</span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679097236"><span class="annot"><a href="#local-6989586621679097236"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Parser Bool Word8
+forall end. end -&gt; Parser end Word8
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span>
+</span><span id="line-179"></span><span>                            </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$!</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">False</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">dec</span></span><span> </span><span class="annot"><a href="#local-6989586621679097236"><span class="hs-identifier hs-type">w</span></a></span><span>
+</span><span id="line-180"></span><span>                        </span><span class="hs-special">)</span><span>
+</span><span id="line-181"></span><span>                         </span><span class="annot"><span class="annottext">Parser Bool Bool
+-&gt; (Bool -&gt; Parser (Path, Error) Bool) -&gt; Parser (Path, Error) Bool
+forall e a x. Parser e a -&gt; (e -&gt; Parser x a) -&gt; Parser x a
+</span><span class="hs-operator hs-var">`catch`</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Parser (Path, Error) Bool
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span>
+</span><span id="line-182"></span><span>               </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679097235"><span class="hs-identifier hs-type">more</span></a></span><span>
+</span><span id="line-183"></span><span>                 </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">mapError</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">()
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either Sign (WholeInt Word)
+-&gt; Either (Path, Error) (Either Sign (WholeInt Word))
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">(Either Sign (WholeInt Word)
+ -&gt; Either (Path, Error) (Either Sign (WholeInt Word)))
+-&gt; Either Sign (WholeInt Word)
+-&gt; Either (Path, Error) (Either Sign (WholeInt Word))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Either Sign (WholeInt Word)
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097232"><span class="hs-identifier hs-var">sign</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-184"></span><span>                        </span><span class="hs-special">(</span><span id="local-6989586621679097238"><span class="annot"><a href="#local-6989586621679097238"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">wholeIntDec</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679097232"><span class="hs-identifier hs-type">sign</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">WholeInt</span></span><span> </span><span class="annot"><span class="hs-number">0</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-number">0</span></span><span>
+</span><span id="line-185"></span><span>                        </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span class="annot"><a href="#local-6989586621679097238"><span class="hs-identifier hs-type">i</span></a></span><span>
+</span><span id="line-186"></span><span>
+</span><span id="line-187"></span><span>                 </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">WholeInt</span></span><span> </span><span class="annot"><span class="hs-number">0</span></span><span class="hs-special">)</span><span>
+</span><span id="line-188"></span><span>
+</span><span id="line-189"></span><span>             </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#NonZero"><span class="hs-identifier hs-type">NonZero</span></a></span><span> </span><span id="local-6989586621679097241"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097241"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-190"></span><span>               </span><span class="annot"><span class="annottext">(() -&gt; Either (Path, Error) (Either Sign (WholeInt Word)))
+-&gt; Parser () (Either Sign (WholeInt Word))
+-&gt; Parser (Path, Error) (Either Sign (WholeInt Word))
+forall e x a. (e -&gt; Either x a) -&gt; Parser e a -&gt; Parser x a
+</span><span class="hs-identifier hs-var">mapError</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">()
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either Sign (WholeInt Word)
+-&gt; Either (Path, Error) (Either Sign (WholeInt Word))
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">(Either Sign (WholeInt Word)
+ -&gt; Either (Path, Error) (Either Sign (WholeInt Word)))
+-&gt; Either Sign (WholeInt Word)
+-&gt; Either (Path, Error) (Either Sign (WholeInt Word))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Sign -&gt; Either Sign (WholeInt Word)
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097232"><span class="hs-identifier hs-var">sign</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Parser () (Either Sign (WholeInt Word))
+ -&gt; Parser (Path, Error) (Either Sign (WholeInt Word)))
+-&gt; Parser () (Either Sign (WholeInt Word))
+-&gt; Parser (Path, Error) (Either Sign (WholeInt Word))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-191"></span><span>                 </span><span class="hs-special">(</span><span id="local-6989586621679097242"><span class="annot"><a href="#local-6989586621679097242"><span class="hs-identifier hs-var">i</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">()
+-&gt; Sign -&gt; WholeInt Word -&gt; Int -&gt; Parser () (WholeInt Word, Int)
+forall overflow.
+overflow
+-&gt; Sign
+-&gt; WholeInt Word
+-&gt; Int
+-&gt; Parser overflow (WholeInt Word, Int)
+</span><span class="hs-identifier hs-var">wholeIntDec</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Sign
+</span><a href="#local-6989586621679097232"><span class="hs-identifier hs-var">sign</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word -&gt; WholeInt Word
+forall word. word -&gt; WholeInt word
+</span><span class="hs-identifier hs-var">WholeInt</span></span><span> </span><span class="annot"><span class="annottext">(Word -&gt; WholeInt Word) -&gt; Word -&gt; WholeInt Word
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679097241"><span class="hs-identifier hs-var">w</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">1</span></span><span>
+</span><span id="line-192"></span><span>                 </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span class="annot"><a href="#local-6989586621679097242"><span class="hs-identifier hs-type">i</span></a></span><span>
+</span><span id="line-193"></span><span>
+</span><span id="line-194"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$!</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">wholeToInt</span></span><span> </span><span class="annot"><a href="#local-6989586621679097232"><span class="hs-identifier hs-type">sign</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">&lt;$&gt;</span></span><span> </span><span class="annot"><a href="#local-6989586621679097234"><span class="hs-identifier hs-type">i</span></a></span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span>
+</span><span id="line-197"></span><span>
+</span><span id="line-198"></span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#skipExponentP"><span class="hs-identifier hs-type">skipExponentP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-199"></span><span id="skipExponentP"><span class="annot"><span class="annottext">skipExponentP :: Path -&gt; Parser (Path, Error) ()
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#skipExponentP"><span class="hs-identifier hs-var hs-var">skipExponentP</span></a></span></span><span> </span><span id="local-6989586621679097245"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097245"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-200"></span><span>  </span><span id="local-6989586621679097246"><span class="annot"><a href="#local-6989586621679097246"><span class="hs-identifier hs-var">ex</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) Exp
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#expP"><span class="hs-identifier hs-var">expP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679097245"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-201"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679097246"><span class="hs-identifier hs-type">ex</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-202"></span><span>    </span><span class="annot"><span class="annottext">Exp
+</span><a href="Codec.JSON.Decoder.Number.Internal.html#NoExp"><span class="hs-identifier hs-var">NoExp</span></a></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">() -&gt; Parser (Path, Error) ()
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-203"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Number.Internal.html#Exp"><span class="hs-identifier hs-type">Exp</span></a></span><span> </span><span class="annot"><span class="annottext">Sign
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">Digit
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Word8 -&gt; Bool) -&gt; Parser (Path, Error) ()
+forall never. (Word8 -&gt; Bool) -&gt; Parser never ()
+</span><span class="hs-identifier hs-var">skipUntilEndOr</span></span><span> </span><span class="annot"><span class="annottext">((Word8 -&gt; Bool) -&gt; Parser (Path, Error) ())
+-&gt; (Word8 -&gt; Bool) -&gt; Parser (Path, Error) ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; (Word8 -&gt; Bool) -&gt; Maybe Word8 -&gt; Bool
+forall b a. b -&gt; (a -&gt; b) -&gt; Maybe a -&gt; b
+</span><span class="hs-identifier hs-var">maybe</span></span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">True</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Bool
+</span><span class="hs-identifier hs-var">False</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Maybe Word8 -&gt; Bool) -&gt; (Word8 -&gt; Maybe Word8) -&gt; Word8 -&gt; Bool
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Maybe Word8
+</span><span class="hs-identifier hs-var">dec</span></span><span>
+</span><span id="line-204"></span></pre></body></html>

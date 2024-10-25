@@ -1,0 +1,37 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DataKinds #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="annot"><span class="hs-comment">{-| Functions for encoding RFC 9562 UUIDs in RFC 8259 JSONs.
+ -}</span></span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.UUID.html"><span class="hs-identifier">Codec.JSON.Encoder.UUID</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.UUID.html#uuid"><span class="hs-identifier">uuid</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.JSON.Encoder.Unsafe</span></span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.ByteString.Builder</span></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.UUID.Types</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">UUID</span></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-comment">-- | Encode a 'UUID' as a JSON string, in lower-case hexadecimal</span><span>
+</span><span id="line-18"></span><span class="hs-comment">--   @xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@ format (&quot;hex-and-dash&quot;),</span><span>
+</span><span id="line-19"></span><span class="annot"><a href="Codec.JSON.Encoder.UUID.html#uuid"><span class="hs-identifier hs-type">uuid</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">UUID</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Encoder</span></span><span>
+</span><span id="line-20"></span><span id="uuid"><span class="annot"><span class="annottext">uuid :: UUID -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.UUID.html#uuid"><span class="hs-identifier hs-var hs-var">uuid</span></a></span></span><span> </span><span id="local-6989586621679043200"><span class="annot"><span class="annottext">UUID
+</span><a href="#local-6989586621679043200"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><span class="hs-identifier hs-var">Encoder</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">StrictByteString -&gt; Builder
+</span><span class="hs-identifier hs-var">byteString</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">UUID -&gt; StrictByteString
+</span><span class="hs-identifier hs-var">UUID.toASCIIBytes</span></span><span> </span><span class="annot"><span class="annottext">UUID
+</span><a href="#local-6989586621679043200"><span class="hs-identifier hs-var">u</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-21"></span></pre></body></html>

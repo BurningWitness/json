@@ -1,0 +1,393 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns
+           , GADTs
+           , ScopedTypeVariables
+           , UnboxedTuples #-}</span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Object.Internal</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#lookupText"><span class="hs-identifier">lookupText</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#insertText"><span class="hs-identifier">insertText</span></a></span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Qualifier"><span class="hs-identifier">Qualifier</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#MalformedParser"><span class="hs-identifier">MalformedParser</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#State"><span class="hs-identifier">State</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#parsePairsA"><span class="hs-identifier">parsePairsA</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Composite.Internal</span></a></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.JSON.Internal</span></a></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Internal</span></a></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.String.Internal</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Data.JSON.Internal.html"><span class="hs-identifier">Data.JSON.Internal</span></a></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.RadixTree.Word8.Strict</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">RadixTree</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.RadixTree.Word8.Strict</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Radix</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Radix1Tree.Word8.Key.Unsafe</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Radix1</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unsafeFeedText</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Radix1Tree.Word8.Strict</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Radix1Tree</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Radix1Tree.Word8.Strict.Zipper</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Context1</span></span><span class="hs-special">)</span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Radix1Tree.Word8.Strict.Zipper</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Radix1</span></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Internal.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">chunkOverhead</span></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">GHC.Exts</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Any</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe</span></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span id="local-6989586621679098947"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#lookupText"><span class="hs-identifier hs-type">lookupText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="annot"><a href="#local-6989586621679098947"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679098947"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-38"></span><span id="lookupText"><span class="annot"><span class="annottext">lookupText :: forall a. Text -&gt; RadixTree a -&gt; Maybe a
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#lookupText"><span class="hs-identifier hs-var hs-var">lookupText</span></a></span></span><span> </span><span id="local-6989586621679099034"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099034"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Feed -&gt; RadixTree a -&gt; Maybe a
+forall a. Feed -&gt; RadixTree a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Radix.lookup</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Feed
+</span><span class="hs-identifier hs-var">Radix.feedText</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099034"><span class="hs-identifier hs-var">txt</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span id="local-6989586621679098952"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#insertText"><span class="hs-identifier hs-type">insertText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098952"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="annot"><a href="#local-6989586621679098952"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="annot"><a href="#local-6989586621679098952"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-41"></span><span id="insertText"><span class="annot"><span class="annottext">insertText :: forall a. Text -&gt; a -&gt; RadixTree a -&gt; RadixTree a
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#insertText"><span class="hs-identifier hs-var hs-var">insertText</span></a></span></span><span> </span><span id="local-6989586621679099037"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099037"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span id="local-6989586621679099038"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679099038"><span class="hs-identifier hs-var">raw</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Feed -&gt; a -&gt; RadixTree a -&gt; RadixTree a
+forall a. Feed -&gt; a -&gt; RadixTree a -&gt; RadixTree a
+</span><span class="hs-identifier hs-var">Radix.insert</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Feed
+</span><span class="hs-identifier hs-var">Radix.feedText</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099037"><span class="hs-identifier hs-var">txt</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679099038"><span class="hs-identifier hs-var">raw</span></a></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span id="local-6989586621679098955"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#descendText1"><span class="hs-identifier hs-type">descendText1</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Radix1Tree</span></span><span> </span><span class="annot"><a href="#local-6989586621679098955"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Context1</span></span><span> </span><span class="annot"><a href="#local-6989586621679098955"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Context1</span></span><span> </span><span class="annot"><a href="#local-6989586621679098955"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-44"></span><span id="descendText1"><span class="annot"><span class="annottext">descendText1 :: forall a.
+Text -&gt; Either (Radix1Tree a) (Context1 a) -&gt; Maybe (Context1 a)
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#descendText1"><span class="hs-identifier hs-var hs-var">descendText1</span></a></span></span><span> </span><span id="local-6989586621679099041"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099041"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Feed1 -&gt; Either (Radix1Tree a) (Context1 a) -&gt; Maybe (Context1 a)
+forall a.
+Feed1 -&gt; Either (Radix1Tree a) (Context1 a) -&gt; Maybe (Context1 a)
+</span><span class="hs-identifier hs-var">Radix1.descend</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Feed1
+</span><span class="hs-identifier hs-var">Radix1.unsafeFeedText</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099041"><span class="hs-identifier hs-var">txt</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="hs-keyword">data</span><span> </span><span id="Qualifier"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Qualifier"><span class="hs-identifier hs-var">Qualifier</span></a></span></span><span> </span><span id="local-6989586621679099043"><span class="annot"><a href="#local-6989586621679099043"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-49"></span><span>  </span><span id="local-6989586621679099044"><span id="Mandatory"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Mandatory"><span class="hs-identifier hs-var">Mandatory</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Qualifier"><span class="hs-identifier hs-type">Qualifier</span></a></span><span>        </span><span class="annot"><a href="#local-6989586621679099044"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-50"></span><span>  </span><span id="local-6989586621679099046"><span id="Optional"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Optional"><span class="hs-identifier hs-var">Optional</span></a></span></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Qualifier"><span class="hs-identifier hs-type">Qualifier</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679099046"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-51"></span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">data</span><span> </span><span id="MalformedParser"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#MalformedParser"><span class="hs-identifier hs-var">MalformedParser</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="MalformedParser"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#MalformedParser"><span class="hs-identifier hs-var">MalformedParser</span></a></span></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679099051"><span id="local-6989586621679099055"><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#MalformedParser"><span class="hs-identifier hs-type">MalformedParser</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-57"></span><span>  </span><span id="local-6989586621679099058"><span class="annot"><span class="annottext">showsPrec :: Int -&gt; MalformedParser -&gt; ShowS
+</span><a href="#local-6989586621679099058"><span class="hs-identifier hs-var hs-var hs-var">showsPrec</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="annot"><span class="annottext">MalformedParser
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#MalformedParser"><span class="hs-identifier hs-var">MalformedParser</span></a></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-58"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Malformed parser&quot;</span></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679099066"><span id="local-6989586621679099070"><span id="local-6989586621679099073"><span id="local-6989586621679099076"><span class="annot"><span class="hs-identifier hs-type">Exception</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#MalformedParser"><span class="hs-identifier hs-type">MalformedParser</span></a></span></span></span></span></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span class="hs-keyword">data</span><span> </span><span id="State"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#State"><span class="hs-identifier hs-var">State</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Unsaturated"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Unsaturated"><span class="hs-identifier hs-var">Unsaturated</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Any</span></span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span><span>           </span><span class="hs-glyph">|</span><span> </span><span id="Saturated"><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Saturated"><span class="hs-identifier hs-var">Saturated</span></a></span></span><span> </span><span class="hs-glyph">!</span><span class="annot"><span class="hs-identifier hs-type">Any</span></span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#parsePairsA"><span class="hs-identifier hs-type">parsePairsA</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#State"><span class="hs-identifier hs-type">State</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#State"><span class="hs-identifier hs-type">State</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span id="parsePairsA"><span class="annot"><span class="annottext">parsePairsA :: Path -&gt; RadixTree State -&gt; Parser (Path, Error) (RadixTree State)
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#parsePairsA"><span class="hs-identifier hs-var hs-var">parsePairsA</span></a></span></span><span> </span><span id="local-6989586621679099081"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099081"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679099082"><span class="annot"><span class="annottext">RadixTree State
+</span><a href="#local-6989586621679099082"><span class="hs-identifier hs-var">r0</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-69"></span><span>  </span><span class="annot"><span class="annottext">Parser (Path, Error) ()
+forall never. Parser never ()
+</span><span class="hs-identifier hs-var">skipEndOr1</span></span><span>
+</span><span id="line-70"></span><span>  </span><span id="local-6989586621679099084"><span class="annot"><a href="#local-6989586621679099084"><span class="hs-identifier hs-var">nonempty</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) Bool
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#firstKeyP"><span class="hs-identifier hs-var">firstKeyP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099081"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-71"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679099084"><span class="hs-identifier hs-type">nonempty</span></a></span><span>
+</span><span id="line-72"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><a href="#local-6989586621679099086"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099082"><span class="hs-identifier hs-type">r0</span></a></span><span>
+</span><span id="line-73"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679099082"><span class="hs-identifier hs-type">r0</span></a></span><span>
+</span><span id="line-74"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-75"></span><span>    </span><span id="local-6989586621679099087"><span class="annot"><span class="annottext">hit :: Parser (Path, Error) Chunk
+</span><a href="#local-6989586621679099087"><span class="hs-identifier hs-var hs-var">hit</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Path -&gt; Int -&gt; Parser (Path, Error) Chunk
+</span><a href="Codec.JSON.Decoder.String.Internal.html#chunkP"><span class="hs-identifier hs-var">chunkP</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Complain"><span class="hs-identifier hs-var">Complain</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099081"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">128</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Int -&gt; Int
+forall a. Num a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-glyph hs-var">-</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier hs-var">LT.chunkOverhead</span></span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span>    </span><span id="local-6989586621679099090"><span class="annot"><span class="annottext">drill :: RadixTree State
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+</span><a href="#local-6989586621679099090"><span class="hs-identifier hs-var hs-var">drill</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span id="local-6989586621679099092"><span class="annot"><span class="annottext">Maybe State
+</span><a href="#local-6989586621679099092"><span class="hs-identifier hs-var">mx</span></a></span></span><span> </span><span id="local-6989586621679099093"><span class="annot"><span class="annottext">Radix1Tree State
+</span><a href="#local-6989586621679099093"><span class="hs-identifier hs-var">t</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-78"></span><span>      </span><span class="annot"><span class="annottext">Parser (Path, Error) ()
+forall never. Parser never ()
+</span><span class="hs-identifier hs-var">skipEndOr1</span></span><span>
+</span><span id="line-79"></span><span>      </span><span id="local-6989586621679099094"><span class="annot"><a href="#local-6989586621679099094"><span class="hs-identifier hs-var">chunk0</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) Chunk
+</span><a href="#local-6989586621679099087"><span class="hs-identifier hs-var">hit</span></a></span><span>
+</span><span id="line-80"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679099094"><span class="hs-identifier hs-type">chunk0</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-81"></span><span>        </span><span class="annot"><span class="annottext">Chunk
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Nil"><span class="hs-identifier hs-var">Nil</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-82"></span><span>          </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe State
+</span><a href="#local-6989586621679099092"><span class="hs-identifier hs-var">mx</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-83"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Unsaturated"><span class="hs-identifier hs-type">Unsaturated</span></a></span><span> </span><span id="local-6989586621679099096"><span class="annot"><span class="annottext">Decoder Any
+</span><a href="#local-6989586621679099096"><span class="hs-identifier hs-var">dec</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe (Decoder Any, State -&gt; RadixTree State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Maybe (Decoder Any, State -&gt; RadixTree State)
+ -&gt; Parser
+      (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State)))
+-&gt; Maybe (Decoder Any, State -&gt; RadixTree State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Decoder Any, State -&gt; RadixTree State)
+-&gt; Maybe (Decoder Any, State -&gt; RadixTree State)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Decoder Any
+</span><a href="#local-6989586621679099096"><span class="hs-identifier hs-var">dec</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679099097"><span class="annot"><span class="annottext">State
+</span><a href="#local-6989586621679099097"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe State -&gt; Radix1Tree State -&gt; RadixTree State
+forall a. Maybe a -&gt; Radix1Tree a -&gt; RadixTree a
+</span><span class="hs-identifier hs-var">RadixTree</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">State -&gt; Maybe State
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">State
+</span><a href="#local-6989586621679099097"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Radix1Tree State
+</span><a href="#local-6989586621679099093"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-84"></span><span>            </span><span class="annot"><span class="annottext">Maybe State
+</span><span class="hs-identifier">_</span></span><span>                      </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe (Decoder Any, State -&gt; RadixTree State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Maybe (Decoder Any, State -&gt; RadixTree State)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-85"></span><span>
+</span><span id="line-86"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html#Chunk"><span class="hs-identifier hs-type">Chunk</span></a></span><span> </span><span id="local-6989586621679099099"><span class="annot"><span class="annottext">More
+</span><a href="#local-6989586621679099099"><span class="hs-identifier hs-var">more0</span></a></span></span><span> </span><span id="local-6989586621679099100"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099100"><span class="hs-identifier hs-var">txt0</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-87"></span><span>          </span><span class="annot"><span class="annottext">More
+-&gt; Maybe (Context1 State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+</span><a href="#local-6989586621679099101"><span class="hs-identifier hs-var">drill1</span></a></span><span> </span><span class="annot"><span class="annottext">More
+</span><a href="#local-6989586621679099099"><span class="hs-identifier hs-var">more0</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe (Context1 State)
+ -&gt; Parser
+      (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State)))
+-&gt; Maybe (Context1 State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text
+-&gt; Either (Radix1Tree State) (Context1 State)
+-&gt; Maybe (Context1 State)
+forall a.
+Text -&gt; Either (Radix1Tree a) (Context1 a) -&gt; Maybe (Context1 a)
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#descendText1"><span class="hs-identifier hs-var">descendText1</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099100"><span class="hs-identifier hs-var">txt0</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Radix1Tree State -&gt; Either (Radix1Tree State) (Context1 State)
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">Radix1Tree State
+</span><a href="#local-6989586621679099093"><span class="hs-identifier hs-var">t</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-88"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-89"></span><span>        </span><span id="local-6989586621679099101"><span class="annot"><span class="annottext">drill1 :: More
+-&gt; Maybe (Context1 State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+</span><a href="#local-6989586621679099101"><span class="hs-identifier hs-var hs-var">drill1</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679099102"><span class="annot"><span class="annottext">More
+</span><a href="#local-6989586621679099102"><span class="hs-identifier hs-var">more</span></a></span></span><span> </span><span id="local-6989586621679099103"><span class="annot"><span class="annottext">Maybe (Context1 State)
+</span><a href="#local-6989586621679099103"><span class="hs-identifier hs-var">mayCtx</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-90"></span><span>          </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Maybe (Context1 State)
+</span><a href="#local-6989586621679099103"><span class="hs-identifier hs-var">mayCtx</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-91"></span><span>            </span><span class="annot"><span class="annottext">Maybe (Context1 State)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>   </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-92"></span><span>              </span><span class="annot"><span class="annottext">Maybe (Decoder Any, State -&gt; RadixTree State)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="annot"><span class="annottext">Maybe (Decoder Any, State -&gt; RadixTree State)
+-&gt; Parser (Path, Error) ()
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a b. a -&gt; Parser (Path, Error) b -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">More
+</span><a href="#local-6989586621679099102"><span class="hs-identifier hs-var">more</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-93"></span><span>                           </span><span class="annot"><span class="annottext">More
+</span><span class="hs-identifier hs-var">More</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling_ -&gt; Path -&gt; Parser (Path, Error) ()
+</span><a href="Codec.JSON.Decoder.String.Internal.html#stringP_"><span class="hs-identifier hs-var">stringP_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling_
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Complain_"><span class="hs-identifier hs-var">Complain_</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099081"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-94"></span><span>                           </span><span class="annot"><span class="annottext">More
+</span><span class="hs-identifier hs-var">End</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">() -&gt; Parser (Path, Error) ()
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-95"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679099109"><span class="annot"><span class="annottext">Context1 State
+</span><a href="#local-6989586621679099109"><span class="hs-identifier hs-var">ctx</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-96"></span><span>              </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">More
+</span><a href="#local-6989586621679099102"><span class="hs-identifier hs-var">more</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-97"></span><span>                </span><span class="annot"><span class="annottext">More
+</span><span class="hs-identifier hs-var">More</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-98"></span><span>                  </span><span id="local-6989586621679099110"><span class="annot"><a href="#local-6989586621679099110"><span class="hs-identifier hs-var">chunk</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) Chunk
+</span><a href="#local-6989586621679099087"><span class="hs-identifier hs-var">hit</span></a></span><span>
+</span><span id="line-99"></span><span>                  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679099110"><span class="hs-identifier hs-type">chunk</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-100"></span><span>                    </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html#Chunk"><span class="hs-identifier hs-type">Chunk</span></a></span><span> </span><span id="local-6989586621679099111"><span class="annot"><span class="annottext">More
+</span><a href="#local-6989586621679099111"><span class="hs-identifier hs-var">more'</span></a></span></span><span> </span><span id="local-6989586621679099112"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099112"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">More
+-&gt; Maybe (Context1 State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+</span><a href="#local-6989586621679099101"><span class="hs-identifier hs-var">drill1</span></a></span><span> </span><span class="annot"><span class="annottext">More
+</span><a href="#local-6989586621679099111"><span class="hs-identifier hs-var">more'</span></a></span><span> </span><span class="annot"><span class="annottext">(Maybe (Context1 State)
+ -&gt; Parser
+      (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State)))
+-&gt; Maybe (Context1 State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text
+-&gt; Either (Radix1Tree State) (Context1 State)
+-&gt; Maybe (Context1 State)
+forall a.
+Text -&gt; Either (Radix1Tree a) (Context1 a) -&gt; Maybe (Context1 a)
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#descendText1"><span class="hs-identifier hs-var">descendText1</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099112"><span class="hs-identifier hs-var">txt</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Context1 State -&gt; Either (Radix1Tree State) (Context1 State)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">Context1 State
+</span><a href="#local-6989586621679099109"><span class="hs-identifier hs-var">ctx</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-101"></span><span>                    </span><span class="annot"><span class="annottext">Chunk
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Nil"><span class="hs-identifier hs-var">Nil</span></a></span><span>             </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Context1 State
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+</span><a href="#local-6989586621679099113"><span class="hs-identifier hs-var">stop</span></a></span><span> </span><span class="annot"><span class="annottext">Context1 State
+</span><a href="#local-6989586621679099109"><span class="hs-identifier hs-var">ctx</span></a></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span>                </span><span class="annot"><span class="annottext">More
+</span><span class="hs-identifier hs-var">End</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Context1 State
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+</span><a href="#local-6989586621679099113"><span class="hs-identifier hs-var">stop</span></a></span><span> </span><span class="annot"><span class="annottext">Context1 State
+</span><a href="#local-6989586621679099109"><span class="hs-identifier hs-var">ctx</span></a></span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span>        </span><span id="local-6989586621679099113"><span class="annot"><span class="annottext">stop :: Context1 State
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+</span><a href="#local-6989586621679099113"><span class="hs-identifier hs-var hs-var">stop</span></a></span></span><span> </span><span id="local-6989586621679099114"><span class="annot"><span class="annottext">Context1 State
+</span><a href="#local-6989586621679099114"><span class="hs-identifier hs-var">ctx</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-106"></span><span>          </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Context1 State -&gt; Maybe (State, State -&gt; Radix1Tree State)
+forall a. Context1 a -&gt; Maybe (a, a -&gt; Radix1Tree a)
+</span><span class="hs-identifier hs-var">Radix1.focus</span></span><span> </span><span class="annot"><span class="annottext">Context1 State
+</span><a href="#local-6989586621679099114"><span class="hs-identifier hs-var">ctx</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-107"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Unsaturated"><span class="hs-identifier hs-type">Unsaturated</span></a></span><span> </span><span id="local-6989586621679099116"><span class="annot"><span class="annottext">Decoder Any
+</span><a href="#local-6989586621679099116"><span class="hs-identifier hs-var">dec</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099117"><span class="annot"><span class="annottext">State -&gt; Radix1Tree State
+</span><a href="#local-6989586621679099117"><span class="hs-identifier hs-var">reinsert</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-108"></span><span>              </span><span class="annot"><span class="annottext">Maybe (Decoder Any, State -&gt; RadixTree State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Maybe (Decoder Any, State -&gt; RadixTree State)
+ -&gt; Parser
+      (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State)))
+-&gt; Maybe (Decoder Any, State -&gt; RadixTree State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">(Decoder Any, State -&gt; RadixTree State)
+-&gt; Maybe (Decoder Any, State -&gt; RadixTree State)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Decoder Any
+</span><a href="#local-6989586621679099116"><span class="hs-identifier hs-var">dec</span></a></span><span class="hs-special">,</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679099118"><span class="annot"><span class="annottext">State
+</span><a href="#local-6989586621679099118"><span class="hs-identifier hs-var">y</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe State -&gt; Radix1Tree State -&gt; RadixTree State
+forall a. Maybe a -&gt; Radix1Tree a -&gt; RadixTree a
+</span><span class="hs-identifier hs-var">RadixTree</span></span><span> </span><span class="annot"><span class="annottext">Maybe State
+</span><a href="#local-6989586621679099092"><span class="hs-identifier hs-var">mx</span></a></span><span> </span><span class="annot"><span class="annottext">(Radix1Tree State -&gt; RadixTree State)
+-&gt; Radix1Tree State -&gt; RadixTree State
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">State -&gt; Radix1Tree State
+</span><a href="#local-6989586621679099117"><span class="hs-identifier hs-var">reinsert</span></a></span><span> </span><span class="annot"><span class="annottext">State
+</span><a href="#local-6989586621679099118"><span class="hs-identifier hs-var">y</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span>            </span><span class="annot"><span class="annottext">Maybe (State, State -&gt; Radix1Tree State)
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Maybe (Decoder Any, State -&gt; RadixTree State)
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">Maybe (Decoder Any, State -&gt; RadixTree State)
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>
+</span><span id="line-111"></span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span>    </span><span id="local-6989586621679099086"><span class="annot"><span class="annottext">go :: RadixTree State -&gt; Parser (Path, Error) (RadixTree State)
+</span><a href="#local-6989586621679099086"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679099119"><span class="annot"><span class="annottext">RadixTree State
+</span><a href="#local-6989586621679099119"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-114"></span><span>      </span><span class="hs-special">(</span><span id="local-6989586621679099120"><span class="annot"><a href="#local-6989586621679099120"><span class="hs-identifier hs-var">key</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099121"><span class="annot"><a href="#local-6989586621679099121"><span class="hs-identifier hs-var">mayDec</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Parser
+  (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+-&gt; Parser
+     (Path, Error)
+     (ByteString, Maybe (Decoder Any, State -&gt; RadixTree State))
+forall e a. Parser e a -&gt; Parser e (ByteString, a)
+</span><span class="hs-identifier hs-var">match</span></span><span> </span><span class="annot"><span class="annottext">(Parser
+   (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+ -&gt; Parser
+      (Path, Error)
+      (ByteString, Maybe (Decoder Any, State -&gt; RadixTree State)))
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+-&gt; Parser
+     (Path, Error)
+     (ByteString, Maybe (Decoder Any, State -&gt; RadixTree State))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">RadixTree State
+-&gt; Parser
+     (Path, Error) (Maybe (Decoder Any, State -&gt; RadixTree State))
+</span><a href="#local-6989586621679099090"><span class="hs-identifier hs-var">drill</span></a></span><span> </span><span class="annot"><span class="annottext">RadixTree State
+</span><a href="#local-6989586621679099119"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-115"></span><span>
+</span><span id="line-116"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679099123"><span class="annot"><a href="#local-6989586621679099123"><span class="hs-identifier hs-var hs-var">rawKey</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">JSON -&gt; JSONKey
+</span><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-var">JSONKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ByteString -&gt; JSON
+</span><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-var">JSON</span></a></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679099120"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span>      </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextColonP"><span class="hs-identifier hs-type">nextColonP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099081"><span class="hs-identifier hs-type">path</span></a></span><span>
+</span><span id="line-119"></span><span>      </span><span id="local-6989586621679099127"><span class="annot"><a href="#local-6989586621679099127"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextValueP"><span class="hs-identifier hs-type">nextValueP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099081"><span class="hs-identifier hs-type">path</span></a></span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span>      </span><span id="local-6989586621679099129"><span class="annot"><a href="#local-6989586621679099129"><span class="hs-identifier hs-var">r'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679099121"><span class="hs-identifier hs-type">mayDec</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-122"></span><span>              </span><span class="annot"><span class="annottext">Maybe (Decoder Any, State -&gt; RadixTree State)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>              </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RadixTree State
+</span><a href="#local-6989586621679099119"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">RadixTree State
+-&gt; Parser (Path, Error) ()
+-&gt; Parser (Path, Error) (RadixTree State)
+forall a b. a -&gt; Parser (Path, Error) b -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a b. Functor f =&gt; a -&gt; f b -&gt; f a
+</span><span class="hs-operator hs-var">&lt;$</span></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling_ -&gt; Path -&gt; K -&gt; Parser (Path, Error) ()
+</span><a href="Codec.JSON.Decoder.JSON.Internal.html#jsonP"><span class="hs-identifier hs-var">jsonP</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling_
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Preserve_"><span class="hs-identifier hs-var">Preserve_</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path -&gt; JSONKey -&gt; Path
+</span><a href="Codec.JSON.Decoder.Internal.html#Key"><span class="hs-identifier hs-var">Key</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099081"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">JSONKey
+</span><a href="#local-6989586621679099123"><span class="hs-identifier hs-var">rawKey</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679099127"><span class="hs-identifier hs-var">k</span></a></span><span>
+</span><span id="line-123"></span><span>              </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679099133"><span class="annot"><span class="annottext">Decoder Any
+</span><a href="#local-6989586621679099133"><span class="hs-identifier hs-var">dec</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679099134"><span class="annot"><span class="annottext">State -&gt; RadixTree State
+</span><a href="#local-6989586621679099134"><span class="hs-identifier hs-var">reinsert</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-124"></span><span>                </span><span id="local-6989586621679099135"><span class="annot"><a href="#local-6989586621679099135"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Decoder Any -&gt; Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Any
+forall a.
+Decoder a -&gt; Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a
+</span><a href="Codec.JSON.Decoder.Internal.html#runDecoder"><span class="hs-identifier hs-var">runDecoder</span></a></span><span> </span><span class="annot"><span class="annottext">Decoder Any
+</span><a href="#local-6989586621679099133"><span class="hs-identifier hs-var">dec</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099081"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="Codec.JSON.Decoder.Internal.html#EmptyBitmask"><span class="hs-identifier hs-var">EmptyBitmask</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679099127"><span class="hs-identifier hs-var">k</span></a></span><span>
+</span><span id="line-125"></span><span>                </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$!</span></span><span> </span><span class="annot"><a href="#local-6989586621679099134"><span class="hs-identifier hs-type">reinsert</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Saturated"><span class="hs-identifier hs-type">Saturated</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099135"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span>      </span><span id="local-6989586621679099139"><span class="annot"><a href="#local-6989586621679099139"><span class="hs-identifier hs-var">more</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextPairP"><span class="hs-identifier hs-type">nextPairP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099081"><span class="hs-identifier hs-type">path</span></a></span><span>
+</span><span id="line-128"></span><span>      </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679099139"><span class="hs-identifier hs-type">more</span></a></span><span>
+</span><span id="line-129"></span><span>        </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-130"></span><span>          </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextKeyP"><span class="hs-identifier hs-type">nextKeyP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099081"><span class="hs-identifier hs-type">path</span></a></span><span>
+</span><span id="line-131"></span><span>          </span><span class="annot"><a href="#local-6989586621679099086"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099129"><span class="hs-identifier hs-type">r'</span></a></span><span>
+</span><span id="line-132"></span><span>
+</span><span id="line-133"></span><span>        </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679099129"><span class="hs-identifier hs-type">r'</span></a></span><span>
+</span><span id="line-134"></span></pre></body></html>

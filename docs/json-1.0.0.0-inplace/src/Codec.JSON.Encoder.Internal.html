@@ -1,0 +1,797 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DerivingStrategies
+           , GeneralizedNewtypeDeriving
+           , OverloadedStrings #-}</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html"><span class="hs-identifier">Codec.JSON.Encoder.Internal</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier">Encoder</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#encode"><span class="hs-identifier">encode</span></a></span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Pair"><span class="hs-identifier">Pair</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#emptyObject"><span class="hs-identifier">emptyObject</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#object1"><span class="hs-identifier">object1</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier">Object1</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#pair"><span class="hs-identifier">pair</span></a></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#KeyEncoder"><span class="hs-identifier">KeyEncoder</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#emptyArray"><span class="hs-identifier">emptyArray</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#array1"><span class="hs-identifier">array1</span></a></span><span>
+</span><span id="line-20"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier">Array1</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#element"><span class="hs-identifier">element</span></a></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#string"><span class="hs-identifier">string</span></a></span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#text"><span class="hs-identifier">text</span></a></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#lazyText"><span class="hs-identifier">lazyText</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word8"><span class="hs-identifier">Codec.JSON.Encoder.Internal.word8</span></a></span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word16"><span class="hs-identifier">word16</span></a></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word32"><span class="hs-identifier">word32</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word64"><span class="hs-identifier">word64</span></a></span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word"><span class="hs-identifier">word</span></a></span><span>
+</span><span id="line-32"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#natural"><span class="hs-identifier">natural</span></a></span><span>
+</span><span id="line-33"></span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int8"><span class="hs-identifier">Codec.JSON.Encoder.Internal.int8</span></a></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int16"><span class="hs-identifier">int16</span></a></span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int32"><span class="hs-identifier">int32</span></a></span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int64"><span class="hs-identifier">int64</span></a></span><span>
+</span><span id="line-38"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int"><span class="hs-identifier">int</span></a></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#integer"><span class="hs-identifier">integer</span></a></span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#float"><span class="hs-identifier">float</span></a></span><span>
+</span><span id="line-42"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#double"><span class="hs-identifier">double</span></a></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#true"><span class="hs-identifier">true</span></a></span><span>
+</span><span id="line-45"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#false"><span class="hs-identifier">false</span></a></span><span>
+</span><span id="line-46"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#null"><span class="hs-identifier">Codec.JSON.Encoder.Internal.null</span></a></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#json"><span class="hs-identifier">json</span></a></span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Data.JSON.Internal.html"><span class="hs-identifier">Data.JSON.Internal</span></a></span><span>
+</span><span id="line-52"></span><span>
+</span><span id="line-53"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.ByteString.Builder</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Builder</span></span><span>
+</span><span id="line-54"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Builder.Prim</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Prim</span></span><span>
+</span><span id="line-55"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Int</span></span><span>
+</span><span id="line-56"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Encoding</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">T</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">encodeUtf8BuilderEscaped</span></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LT</span></span><span>
+</span><span id="line-59"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy.Encoding</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">decodeUtf8'</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">encodeUtf8BuilderEscaped</span></span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Word</span></span><span>
+</span><span id="line-61"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Numeric.Natural</span></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span class="annot"><span class="hs-comment">-- | The encoder type, wrapping a well-formed raw JSON value.</span></span><span>
+</span><span id="line-66"></span><span class="hs-keyword">newtype</span><span> </span><span id="Encoder"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Encoder"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Builder</span></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679095576"><span id="local-6989586621679095580"><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-69"></span><span>  </span><span id="local-6989586621679095583"><span class="annot"><span class="annottext">showsPrec :: Int -&gt; Encoder -&gt; ShowS
+</span><a href="#local-6989586621679095583"><span class="hs-identifier hs-var hs-var hs-var">showsPrec</span></a></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679095585"><span class="annot"><span class="annottext">Encoder
+</span><a href="#local-6989586621679095585"><span class="hs-identifier hs-var">enc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-70"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Either UnicodeException Text
+</span><span class="hs-identifier hs-var">LT.decodeUtf8'</span></span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; Either UnicodeException Text)
+-&gt; (Builder -&gt; ByteString)
+-&gt; Builder
+-&gt; Either UnicodeException Text
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; ByteString
+</span><span class="hs-identifier hs-var">toLazyByteString</span></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Either UnicodeException Text)
+-&gt; Builder -&gt; Either UnicodeException Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Encoder -&gt; Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#encode"><span class="hs-identifier hs-var">encode</span></a></span><span> </span><span class="annot"><span class="annottext">Encoder
+</span><a href="#local-6989586621679095585"><span class="hs-identifier hs-var">enc</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-71"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679095588"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679095588"><span class="hs-identifier hs-var">txt</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; ShowS) -&gt; String -&gt; ShowS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; String
+</span><span class="hs-identifier hs-var">LT.unpack</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679095588"><span class="hs-identifier hs-var">txt</span></a></span><span>
+</span><span id="line-72"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span class="annot"><span class="annottext">UnicodeException
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;&lt;malformed UTF-8&gt;&quot;</span></span><span>
+</span><span id="line-73"></span><span>
+</span><span id="line-74"></span><span class="annot"><span class="hs-comment">-- | Convert any encoded value into a 'Builder'.</span></span><span>
+</span><span id="line-75"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#encode"><span class="hs-identifier hs-type">encode</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Builder</span></span><span>
+</span><span id="line-76"></span><span id="encode"><span class="annot"><span class="annottext">encode :: Encoder -&gt; Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#encode"><span class="hs-identifier hs-var hs-var">encode</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span> </span><span id="local-6989586621679095591"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095591"><span class="hs-identifier hs-var">ro</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095591"><span class="hs-identifier hs-var">ro</span></a></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span class="annot"><span class="hs-comment">-- | JSON object encoder type.</span></span><span>
+</span><span id="line-81"></span><span class="hs-keyword">newtype</span><span> </span><span id="Pair"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Pair"><span class="hs-identifier hs-var">Pair</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Pair"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Pair"><span class="hs-identifier hs-var">Pair</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-type">Object1</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span class="annot"><span class="hs-comment">-- | Empty JSON object.</span></span><span>
+</span><span id="line-86"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#emptyObject"><span class="hs-identifier hs-type">emptyObject</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-87"></span><span id="emptyObject"><span class="annot"><span class="annottext">emptyObject :: Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#emptyObject"><span class="hs-identifier hs-var hs-var">emptyObject</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word16BE</span></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><span class="hs-number">0x7B7D</span></span><span>
+</span><span id="line-88"></span><span>
+</span><span id="line-89"></span><span class="annot"><span class="hs-comment">-- | Encode a non-empty JSON object.</span></span><span>
+</span><span id="line-90"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#object1"><span class="hs-identifier hs-type">object1</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-type">Object1</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-91"></span><span id="object1"><span class="annot"><span class="annottext">object1 :: Object1 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#object1"><span class="hs-identifier hs-var hs-var">object1</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-type">Object1</span></a></span><span> </span><span id="local-6989586621679095595"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095595"><span class="hs-identifier hs-var">ro</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x7B</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095595"><span class="hs-identifier hs-var">ro</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x7D</span></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="annot"><span class="hs-comment">-- | Non-empty JSON object encoder type.</span></span><span>
+</span><span id="line-94"></span><span class="hs-keyword">newtype</span><span> </span><span id="Object1"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-var">Object1</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Object1"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-var">Object1</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Builder</span></span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679095599"><span id="local-6989586621679095603"><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-type">Object1</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-97"></span><span>  </span><span id="local-6989586621679095606"><span class="annot"><span class="annottext">showsPrec :: Int -&gt; Object1 -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var">showsPrec</span></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Encoder -&gt; ShowS
+forall a. Show a =&gt; Int -&gt; a -&gt; ShowS
+</span><span class="hs-identifier hs-var">showsPrec</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">(Encoder -&gt; ShowS) -&gt; (Object1 -&gt; Encoder) -&gt; Object1 -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Object1 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#object1"><span class="hs-identifier hs-var">object1</span></a></span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679095609"><span id="local-6989586621679095613"><span class="annot"><span class="hs-identifier hs-type">Semigroup</span></span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-type">Object1</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-100"></span><span>  </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-type">Object1</span></a></span><span> </span><span id="local-6989586621679095621"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095621"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679095622"><span class="annot"><span class="annottext">&lt;&gt; :: Object1 -&gt; Object1 -&gt; Object1
+</span><span class="hs-operator hs-var hs-var hs-var">&lt;&gt;</span></span></span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-type">Object1</span></a></span><span> </span><span id="local-6989586621679095623"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095623"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Object1
+</span><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-var">Object1</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Object1) -&gt; Builder -&gt; Object1
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095621"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x2C</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095623"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span class="annot"><span class="hs-comment">-- | Use a JSON object pair name and a JSON value as a non-empty JSON object pair.</span></span><span>
+</span><span id="line-103"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#pair"><span class="hs-identifier hs-type">pair</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#KeyEncoder"><span class="hs-identifier hs-type">KeyEncoder</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-type">Object1</span></a></span><span>
+</span><span id="line-104"></span><span id="pair"><span class="annot"><span class="annottext">pair :: KeyEncoder -&gt; Encoder -&gt; Object1
+</span><a href="Codec.JSON.Encoder.Internal.html#pair"><span class="hs-identifier hs-var hs-var">pair</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#KeyEncoder"><span class="hs-identifier hs-type">KeyEncoder</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span> </span><span id="local-6989586621679095625"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095625"><span class="hs-identifier hs-var">key</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span> </span><span id="local-6989586621679095626"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095626"><span class="hs-identifier hs-var">ro</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Object1
+</span><a href="Codec.JSON.Encoder.Internal.html#Object1"><span class="hs-identifier hs-var">Object1</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Object1) -&gt; Builder -&gt; Object1
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095625"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x3A</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095626"><span class="hs-identifier hs-var">ro</span></a></span><span>
+</span><span id="line-105"></span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span>
+</span><span id="line-108"></span><span class="annot"><span class="hs-comment">-- | Object pair name encoder type.</span></span><span>
+</span><span id="line-109"></span><span class="hs-keyword">newtype</span><span> </span><span id="KeyEncoder"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#KeyEncoder"><span class="hs-identifier hs-var">KeyEncoder</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="KeyEncoder"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#KeyEncoder"><span class="hs-identifier hs-var">KeyEncoder</span></a></span></span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-110"></span><span>                     </span><span class="hs-keyword">deriving</span><span> </span><span class="annot"><span class="hs-keyword">newtype</span></span><span> </span><span id="local-6989586621679095628"><span id="local-6989586621679095632"><span id="local-6989586621679095636"><span class="annot"><span class="annottext">Int -&gt; KeyEncoder -&gt; ShowS
+[KeyEncoder] -&gt; ShowS
+KeyEncoder -&gt; String
+(Int -&gt; KeyEncoder -&gt; ShowS)
+-&gt; (KeyEncoder -&gt; String)
+-&gt; ([KeyEncoder] -&gt; ShowS)
+-&gt; Show KeyEncoder
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+$cshowsPrec :: Int -&gt; KeyEncoder -&gt; ShowS
+showsPrec :: Int -&gt; KeyEncoder -&gt; ShowS
+$cshow :: KeyEncoder -&gt; String
+show :: KeyEncoder -&gt; String
+$cshowList :: [KeyEncoder] -&gt; ShowS
+showList :: [KeyEncoder] -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span>
+</span><span id="line-111"></span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span class="annot"><span class="hs-comment">-- | Empty JSON array.</span></span><span>
+</span><span id="line-115"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#emptyArray"><span class="hs-identifier hs-type">emptyArray</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-116"></span><span id="emptyArray"><span class="annot"><span class="annottext">emptyArray :: Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#emptyArray"><span class="hs-identifier hs-var hs-var">emptyArray</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word16BE</span></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><span class="hs-number">0x5B5D</span></span><span>
+</span><span id="line-117"></span><span>
+</span><span id="line-118"></span><span class="annot"><span class="hs-comment">-- | Encode a non-empty JSON array.</span></span><span>
+</span><span id="line-119"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#array1"><span class="hs-identifier hs-type">array1</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-type">Array1</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-120"></span><span id="array1"><span class="annot"><span class="annottext">array1 :: Array1 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#array1"><span class="hs-identifier hs-var hs-var">array1</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-type">Array1</span></a></span><span> </span><span id="local-6989586621679095643"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095643"><span class="hs-identifier hs-var">ro</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x5B</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095643"><span class="hs-identifier hs-var">ro</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x5D</span></span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span class="annot"><span class="hs-comment">-- | Non-empty JSON array encoder type.</span></span><span>
+</span><span id="line-123"></span><span class="hs-keyword">newtype</span><span> </span><span id="Array1"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-var">Array1</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Array1"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-var">Array1</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Builder</span></span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679095646"><span id="local-6989586621679095650"><span class="annot"><span class="hs-identifier hs-type">Show</span></span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-type">Array1</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-126"></span><span>  </span><span id="local-6989586621679095653"><span class="annot"><span class="annottext">showsPrec :: Int -&gt; Array1 -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var">showsPrec</span></span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Encoder -&gt; ShowS
+forall a. Show a =&gt; Int -&gt; a -&gt; ShowS
+</span><span class="hs-identifier hs-var">showsPrec</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">(Encoder -&gt; ShowS) -&gt; (Array1 -&gt; Encoder) -&gt; Array1 -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Array1 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#array1"><span class="hs-identifier hs-var">array1</span></a></span><span>
+</span><span id="line-127"></span><span>
+</span><span id="line-128"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679095656"><span id="local-6989586621679095660"><span class="annot"><span class="hs-identifier hs-type">Semigroup</span></span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-type">Array1</span></a></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-129"></span><span>  </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-type">Array1</span></a></span><span> </span><span id="local-6989586621679095667"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095667"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679095668"><span class="annot"><span class="annottext">&lt;&gt; :: Array1 -&gt; Array1 -&gt; Array1
+</span><span class="hs-operator hs-var hs-var hs-var">&lt;&gt;</span></span></span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-type">Array1</span></a></span><span> </span><span id="local-6989586621679095669"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095669"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Array1
+</span><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-var">Array1</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Array1) -&gt; Builder -&gt; Array1
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095667"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x2C</span></span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095669"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span class="annot"><span class="hs-comment">-- | Use a JSON value as a non-empty JSON array element.</span></span><span>
+</span><span id="line-132"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#element"><span class="hs-identifier hs-type">element</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-type">Array1</span></a></span><span>
+</span><span id="line-133"></span><span id="element"><span class="annot"><span class="annottext">element :: Encoder -&gt; Array1
+</span><a href="Codec.JSON.Encoder.Internal.html#element"><span class="hs-identifier hs-var hs-var">element</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span> </span><span id="local-6989586621679095670"><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095670"><span class="hs-identifier hs-var">ro</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Array1
+</span><a href="Codec.JSON.Encoder.Internal.html#Array1"><span class="hs-identifier hs-var">Array1</span></a></span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="#local-6989586621679095670"><span class="hs-identifier hs-var">ro</span></a></span><span>
+</span><span id="line-134"></span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#oneBytePrim"><span class="hs-identifier hs-type">oneBytePrim</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Prim.BoundedPrim</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span>
+</span><span id="line-138"></span><span id="oneBytePrim"><span class="annot"><span class="annottext">oneBytePrim :: BoundedPrim Word8
+</span><a href="Codec.JSON.Encoder.Internal.html#oneBytePrim"><span class="hs-identifier hs-var hs-var">oneBytePrim</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Word8 -&gt; Word8) -&gt; BoundedPrim Word8 -&gt; BoundedPrim Word8
+forall b a.
+Integral b =&gt;
+(a -&gt; b) -&gt; BoundedPrim a -&gt; BoundedPrim a
+</span><a href="Codec.JSON.Encoder.Internal.html#jsonPrim_"><span class="hs-identifier hs-var">jsonPrim_</span></a></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Word8
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FixedPrim Word8 -&gt; BoundedPrim Word8
+forall a. FixedPrim a -&gt; BoundedPrim a
+</span><span class="hs-identifier hs-var">Prim.liftFixedToBounded</span></span><span> </span><span class="annot"><span class="annottext">FixedPrim Word8
+</span><span class="hs-identifier hs-var">Prim.word8</span></span><span class="hs-special">)</span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#jsonPrim"><span class="hs-identifier hs-type">jsonPrim</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Prim.BoundedPrim</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Char</span></span><span>
+</span><span id="line-141"></span><span id="jsonPrim"><span class="annot"><span class="annottext">jsonPrim :: BoundedPrim Char
+</span><a href="Codec.JSON.Encoder.Internal.html#jsonPrim"><span class="hs-identifier hs-var hs-var">jsonPrim</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Char -&gt; Int) -&gt; BoundedPrim Char -&gt; BoundedPrim Char
+forall b a.
+Integral b =&gt;
+(a -&gt; b) -&gt; BoundedPrim a -&gt; BoundedPrim a
+</span><a href="Codec.JSON.Encoder.Internal.html#jsonPrim_"><span class="hs-identifier hs-var">jsonPrim_</span></a></span><span> </span><span class="annot"><span class="annottext">Char -&gt; Int
+forall a. Enum a =&gt; a -&gt; Int
+</span><span class="hs-identifier hs-var">fromEnum</span></span><span> </span><span class="annot"><span class="annottext">BoundedPrim Char
+</span><span class="hs-identifier hs-var">Prim.charUtf8</span></span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#jsonPrim_"><span class="hs-pragma hs-type">jsonPrim_</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-144"></span><span id="local-6989586621679095445"><span id="local-6989586621679095446"><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#jsonPrim_"><span class="hs-identifier hs-type">jsonPrim_</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integral</span></span><span> </span><span class="annot"><a href="#local-6989586621679095445"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679095446"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679095445"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Prim.BoundedPrim</span></span><span> </span><span class="annot"><a href="#local-6989586621679095446"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Prim.BoundedPrim</span></span><span> </span><span class="annot"><a href="#local-6989586621679095446"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-145"></span><span id="jsonPrim_"><span class="annot"><span class="annottext">jsonPrim_ :: forall b a.
+Integral b =&gt;
+(a -&gt; b) -&gt; BoundedPrim a -&gt; BoundedPrim a
+</span><a href="Codec.JSON.Encoder.Internal.html#jsonPrim_"><span class="hs-identifier hs-var hs-var">jsonPrim_</span></a></span></span><span> </span><span id="local-6989586621679095694"><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679095694"><span class="hs-identifier hs-var">conv</span></a></span></span><span> </span><span id="local-6989586621679095695"><span class="annot"><span class="annottext">BoundedPrim a
+</span><a href="#local-6989586621679095695"><span class="hs-identifier hs-var">one</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-146"></span><span>  </span><span class="annot"><span class="annottext">a -&gt; Either a (Either Word16 Word8)
+forall {a} {b}. (Num a, Num b) =&gt; a -&gt; Either a (Either a b)
+</span><a href="#local-6989586621679095696"><span class="hs-identifier hs-var">spread</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; Either a (Either Word16 Word8))
+-&gt; BoundedPrim (Either a (Either Word16 Word8)) -&gt; BoundedPrim a
+forall (f :: * -&gt; *) b a. Contravariant f =&gt; (b -&gt; a) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">Prim.&gt;$&lt;</span></span><span> </span><span class="annot"><span class="annottext">BoundedPrim a
+-&gt; BoundedPrim (Either Word16 Word8)
+-&gt; BoundedPrim (Either a (Either Word16 Word8))
+forall a b.
+BoundedPrim a -&gt; BoundedPrim b -&gt; BoundedPrim (Either a b)
+</span><span class="hs-identifier hs-var">Prim.eitherB</span></span><span> </span><span class="annot"><span class="annottext">BoundedPrim a
+</span><a href="#local-6989586621679095695"><span class="hs-identifier hs-var">one</span></a></span><span>
+</span><span id="line-147"></span><span>                    </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">BoundedPrim Word16
+-&gt; BoundedPrim Word8 -&gt; BoundedPrim (Either Word16 Word8)
+forall a b.
+BoundedPrim a -&gt; BoundedPrim b -&gt; BoundedPrim (Either a b)
+</span><span class="hs-identifier hs-var">Prim.eitherB</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FixedPrim Word16 -&gt; BoundedPrim Word16
+forall a. FixedPrim a -&gt; BoundedPrim a
+</span><span class="hs-identifier hs-var">Prim.liftFixedToBounded</span></span><span> </span><span class="annot"><span class="annottext">FixedPrim Word16
+</span><span class="hs-identifier hs-var">Prim.word16BE</span></span><span class="hs-special">)</span><span>
+</span><span id="line-148"></span><span>                                   </span><span class="hs-special">(</span><span class="annot"><span class="annottext">FixedPrim Word8 -&gt; BoundedPrim Word8
+forall a. FixedPrim a -&gt; BoundedPrim a
+</span><span class="hs-identifier hs-var">Prim.liftFixedToBounded</span></span><span> </span><span class="annot"><span class="annottext">FixedPrim Word8
+</span><a href="#local-6989586621679095700"><span class="hs-identifier hs-var">escape</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-149"></span><span>                    </span><span class="hs-special">)</span><span>
+</span><span id="line-150"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-151"></span><span>    </span><span id="local-6989586621679095696"><span class="annot"><span class="annottext">spread :: a -&gt; Either a (Either a b)
+</span><a href="#local-6989586621679095696"><span class="hs-identifier hs-var hs-var">spread</span></a></span></span><span> </span><span id="local-6989586621679095738"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679095738"><span class="hs-identifier hs-var">_w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-152"></span><span>      </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679095739"><span class="annot"><span class="annottext">w :: b
+</span><a href="#local-6989586621679095739"><span class="hs-identifier hs-var hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679095694"><span class="hs-identifier hs-var">conv</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679095738"><span class="hs-identifier hs-var">_w</span></a></span><span>
+</span><span id="line-153"></span><span>      </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679095739"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; b -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x20</span></span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679095739"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; b -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x22</span></span><span> </span><span class="hs-comment">{- &quot; -}</span><span> </span><span class="annot"><span class="annottext">Bool -&gt; Bool -&gt; Bool
+</span><span class="hs-operator hs-var">&amp;&amp;</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679095739"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="annot"><span class="annottext">b -&gt; b -&gt; Bool
+forall a. Eq a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">/=</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x5C</span></span><span> </span><span class="hs-comment">{- \ -}</span><span>
+</span><span id="line-154"></span><span>           </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">a -&gt; Either a (Either a b)
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679095738"><span class="hs-identifier hs-var">_w</span></a></span><span>
+</span><span id="line-155"></span><span>           </span><span class="hs-keyword">else</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679095739"><span class="hs-identifier hs-var">w</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-156"></span><span>                  </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x22</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either a b -&gt; Either a (Either a b)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Either a b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">0x5C22</span></span><span class="hs-special">)</span><span> </span><span class="hs-comment">{- \&quot; -}</span><span>
+</span><span id="line-157"></span><span>                  </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x5C</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either a b -&gt; Either a (Either a b)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Either a b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">0x5C5C</span></span><span class="hs-special">)</span><span> </span><span class="hs-comment">{- \\ -}</span><span>
+</span><span id="line-158"></span><span>                  </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x08</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either a b -&gt; Either a (Either a b)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Either a b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">0x5C62</span></span><span class="hs-special">)</span><span> </span><span class="hs-comment">{- \b -}</span><span>
+</span><span id="line-159"></span><span>                  </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x0C</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either a b -&gt; Either a (Either a b)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Either a b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">0x5C66</span></span><span class="hs-special">)</span><span> </span><span class="hs-comment">{- \f -}</span><span>
+</span><span id="line-160"></span><span>                  </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x0A</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either a b -&gt; Either a (Either a b)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Either a b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">0x5C6E</span></span><span class="hs-special">)</span><span> </span><span class="hs-comment">{- \n -}</span><span>
+</span><span id="line-161"></span><span>                  </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x0D</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either a b -&gt; Either a (Either a b)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Either a b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">0x5C72</span></span><span class="hs-special">)</span><span> </span><span class="hs-comment">{- \r -}</span><span>
+</span><span id="line-162"></span><span>                  </span><span class="annot"><span class="annottext">b
+</span><span class="hs-number">0x09</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either a b -&gt; Either a (Either a b)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; Either a b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><span class="hs-number">0x5C74</span></span><span class="hs-special">)</span><span> </span><span class="hs-comment">{- \t -}</span><span>
+</span><span id="line-163"></span><span>                  </span><span class="annot"><span class="annottext">b
+</span><span class="hs-identifier">_</span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either a b -&gt; Either a (Either a b)
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; Either a b
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; b
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679095739"><span class="hs-identifier hs-var">w</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-164"></span><span>
+</span><span id="line-165"></span><span>    </span><span class="hs-comment">-- Encoding as \u00XX</span><span>
+</span><span id="line-166"></span><span>    </span><span id="local-6989586621679095700"><span class="annot"><span class="annottext">escape :: FixedPrim Word8
+</span><a href="#local-6989586621679095700"><span class="hs-identifier hs-var hs-var">escape</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-167"></span><span>      </span><span class="hs-special">(</span><span class="hs-special">,</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x5C753030</span></span><span> </span><span class="annot"><span class="annottext">(Word8 -&gt; (Word32, Word8))
+-&gt; FixedPrim (Word32, Word8) -&gt; FixedPrim Word8
+forall (f :: * -&gt; *) b a. Contravariant f =&gt; (b -&gt; a) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">Prim.&gt;$&lt;</span></span><span> </span><span class="annot"><span class="annottext">FixedPrim Word32
+</span><span class="hs-identifier hs-var">Prim.word32BE</span></span><span> </span><span class="annot"><span class="annottext">FixedPrim Word32 -&gt; FixedPrim Word8 -&gt; FixedPrim (Word32, Word8)
+forall (f :: * -&gt; *) a b. Monoidal f =&gt; f a -&gt; f b -&gt; f (a, b)
+</span><span class="hs-operator hs-var">Prim.&gt;*&lt;</span></span><span> </span><span class="annot"><span class="annottext">FixedPrim Word8
+</span><span class="hs-identifier hs-var">Prim.word8HexFixed</span></span><span>
+</span><span id="line-168"></span><span>
+</span><span id="line-169"></span><span>
+</span><span id="line-170"></span><span>
+</span><span id="line-171"></span><span class="annot"><span class="hs-comment">-- | Encode a t'String' as a JSON string.</span></span><span>
+</span><span id="line-172"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#string"><span class="hs-identifier hs-type">string</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-173"></span><span id="string"><span class="annot"><span class="annottext">string :: String -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#string"><span class="hs-identifier hs-var hs-var">string</span></a></span></span><span> </span><span id="local-6989586621679095748"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679095748"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-174"></span><span>  </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-175"></span><span>       </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-176"></span><span>    </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">BoundedPrim Char -&gt; String -&gt; Builder
+forall a. BoundedPrim a -&gt; [a] -&gt; Builder
+</span><span class="hs-identifier hs-var">Prim.primMapListBounded</span></span><span> </span><span class="annot"><span class="annottext">BoundedPrim Char
+</span><a href="Codec.JSON.Encoder.Internal.html#jsonPrim"><span class="hs-identifier hs-var">jsonPrim</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679095748"><span class="hs-identifier hs-var">s</span></a></span><span>
+</span><span id="line-177"></span><span>    </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-178"></span><span>
+</span><span id="line-179"></span><span class="annot"><span class="hs-comment">-- | Encode a strict 'Text' as a JSON string.</span></span><span>
+</span><span id="line-180"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#text"><span class="hs-identifier hs-type">text</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-181"></span><span id="text"><span class="annot"><span class="annottext">text :: Text -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#text"><span class="hs-identifier hs-var hs-var">text</span></a></span></span><span> </span><span id="local-6989586621679095750"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679095750"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-182"></span><span>  </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-183"></span><span>       </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-184"></span><span>    </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">BoundedPrim Word8 -&gt; Text -&gt; Builder
+</span><span class="hs-identifier hs-var">T.encodeUtf8BuilderEscaped</span></span><span> </span><span class="annot"><span class="annottext">BoundedPrim Word8
+</span><a href="Codec.JSON.Encoder.Internal.html#oneBytePrim"><span class="hs-identifier hs-var">oneBytePrim</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679095750"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-185"></span><span>    </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-186"></span><span>
+</span><span id="line-187"></span><span class="annot"><span class="hs-comment">-- | Encode a lazy 'LT.Text' as a JSON string.</span></span><span>
+</span><span id="line-188"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#lazyText"><span class="hs-identifier hs-type">lazyText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-189"></span><span id="lazyText"><span class="annot"><span class="annottext">lazyText :: Text -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#lazyText"><span class="hs-identifier hs-var hs-var">lazyText</span></a></span></span><span> </span><span id="local-6989586621679095751"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679095751"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-190"></span><span>  </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-191"></span><span>       </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-192"></span><span>    </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">BoundedPrim Word8 -&gt; Text -&gt; Builder
+</span><span class="hs-identifier hs-var">LT.encodeUtf8BuilderEscaped</span></span><span> </span><span class="annot"><span class="annottext">BoundedPrim Word8
+</span><a href="Codec.JSON.Encoder.Internal.html#oneBytePrim"><span class="hs-identifier hs-var">oneBytePrim</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679095751"><span class="hs-identifier hs-var">t</span></a></span><span>
+</span><span id="line-193"></span><span>    </span><span class="annot"><span class="annottext">Builder -&gt; Builder -&gt; Builder
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">Builder.word8</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x22</span></span><span>
+</span><span id="line-194"></span><span>
+</span><span id="line-195"></span><span>
+</span><span id="line-196"></span><span>
+</span><span id="line-197"></span><span class="annot"><span class="hs-comment">-- | Encode a 'Word8' as a JSON number.</span></span><span>
+</span><span id="line-198"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word8"><span class="hs-identifier hs-type">word8</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-199"></span><span id="word8"><span class="annot"><span class="annottext">word8 :: Word8 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#word8"><span class="hs-identifier hs-var hs-var">word8</span></a></span></span><span> </span><span id="local-6989586621679095752"><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679095752"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word8 -&gt; Builder
+</span><span class="hs-identifier hs-var">word8Dec</span></span><span> </span><span class="annot"><span class="annottext">Word8
+</span><a href="#local-6989586621679095752"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-200"></span><span>
+</span><span id="line-201"></span><span class="annot"><span class="hs-comment">-- | Encode a 'Word16' as a JSON number.</span></span><span>
+</span><span id="line-202"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word16"><span class="hs-identifier hs-type">word16</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word16</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-203"></span><span id="word16"><span class="annot"><span class="annottext">word16 :: Word16 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#word16"><span class="hs-identifier hs-var hs-var">word16</span></a></span></span><span> </span><span id="local-6989586621679095754"><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679095754"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word16 -&gt; Builder
+</span><span class="hs-identifier hs-var">word16Dec</span></span><span> </span><span class="annot"><span class="annottext">Word16
+</span><a href="#local-6989586621679095754"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-204"></span><span>
+</span><span id="line-205"></span><span class="annot"><span class="hs-comment">-- | Encode a 'Word32' as a JSON number.</span></span><span>
+</span><span id="line-206"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word32"><span class="hs-identifier hs-type">word32</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word32</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-207"></span><span id="word32"><span class="annot"><span class="annottext">word32 :: Word32 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#word32"><span class="hs-identifier hs-var hs-var">word32</span></a></span></span><span> </span><span id="local-6989586621679095756"><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679095756"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Builder
+</span><span class="hs-identifier hs-var">word32Dec</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><a href="#local-6989586621679095756"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-208"></span><span>
+</span><span id="line-209"></span><span class="annot"><span class="hs-comment">-- | Encode a 'Word64' as a JSON number.</span></span><span>
+</span><span id="line-210"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word64"><span class="hs-identifier hs-type">word64</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word64</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-211"></span><span id="word64"><span class="annot"><span class="annottext">word64 :: Word64 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#word64"><span class="hs-identifier hs-var hs-var">word64</span></a></span></span><span> </span><span id="local-6989586621679095758"><span class="annot"><span class="annottext">Word64
+</span><a href="#local-6989586621679095758"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word64 -&gt; Builder
+</span><span class="hs-identifier hs-var">word64Dec</span></span><span> </span><span class="annot"><span class="annottext">Word64
+</span><a href="#local-6989586621679095758"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-212"></span><span>
+</span><span id="line-213"></span><span class="annot"><span class="hs-comment">-- | Encode a 'Word' as a JSON number.</span></span><span>
+</span><span id="line-214"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#word"><span class="hs-identifier hs-type">word</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-215"></span><span id="word"><span class="annot"><span class="annottext">word :: Word -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#word"><span class="hs-identifier hs-var hs-var">word</span></a></span></span><span> </span><span id="local-6989586621679095760"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679095760"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word -&gt; Builder
+</span><span class="hs-identifier hs-var">wordDec</span></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679095760"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-216"></span><span>
+</span><span id="line-217"></span><span class="annot"><span class="hs-comment">-- | Encode a 'Natural' as a JSON number.</span></span><span>
+</span><span id="line-218"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#natural"><span class="hs-identifier hs-type">natural</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Natural</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-219"></span><span id="natural"><span class="annot"><span class="annottext">natural :: Natural -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#natural"><span class="hs-identifier hs-var hs-var">natural</span></a></span></span><span> </span><span id="local-6989586621679095762"><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679095762"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; (Integer -&gt; Builder) -&gt; Integer -&gt; Encoder
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Builder
+</span><span class="hs-identifier hs-var">integerDec</span></span><span> </span><span class="annot"><span class="annottext">(Integer -&gt; Encoder) -&gt; Integer -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Natural -&gt; Integer
+forall a b. (Integral a, Num b) =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">fromIntegral</span></span><span> </span><span class="annot"><span class="annottext">Natural
+</span><a href="#local-6989586621679095762"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-220"></span><span>
+</span><span id="line-221"></span><span>
+</span><span id="line-222"></span><span>
+</span><span id="line-223"></span><span class="annot"><span class="hs-comment">-- | Encode an 'Int8' as a JSON number.</span></span><span>
+</span><span id="line-224"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int8"><span class="hs-identifier hs-type">int8</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int8</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-225"></span><span id="int8"><span class="annot"><span class="annottext">int8 :: Int8 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#int8"><span class="hs-identifier hs-var hs-var">int8</span></a></span></span><span> </span><span id="local-6989586621679095764"><span class="annot"><span class="annottext">Int8
+</span><a href="#local-6989586621679095764"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int8 -&gt; Builder
+</span><span class="hs-identifier hs-var">int8Dec</span></span><span> </span><span class="annot"><span class="annottext">Int8
+</span><a href="#local-6989586621679095764"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-226"></span><span>
+</span><span id="line-227"></span><span class="annot"><span class="hs-comment">-- | Encode an 'Int16' as a JSON number.</span></span><span>
+</span><span id="line-228"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int16"><span class="hs-identifier hs-type">int16</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int16</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-229"></span><span id="int16"><span class="annot"><span class="annottext">int16 :: Int16 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#int16"><span class="hs-identifier hs-var hs-var">int16</span></a></span></span><span> </span><span id="local-6989586621679095766"><span class="annot"><span class="annottext">Int16
+</span><a href="#local-6989586621679095766"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int16 -&gt; Builder
+</span><span class="hs-identifier hs-var">int16Dec</span></span><span> </span><span class="annot"><span class="annottext">Int16
+</span><a href="#local-6989586621679095766"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-230"></span><span>
+</span><span id="line-231"></span><span class="annot"><span class="hs-comment">-- | Encode an 'Int32' as a JSON number.</span></span><span>
+</span><span id="line-232"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int32"><span class="hs-identifier hs-type">int32</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int32</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-233"></span><span id="int32"><span class="annot"><span class="annottext">int32 :: Int32 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#int32"><span class="hs-identifier hs-var hs-var">int32</span></a></span></span><span> </span><span id="local-6989586621679095768"><span class="annot"><span class="annottext">Int32
+</span><a href="#local-6989586621679095768"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int32 -&gt; Builder
+</span><span class="hs-identifier hs-var">int32Dec</span></span><span> </span><span class="annot"><span class="annottext">Int32
+</span><a href="#local-6989586621679095768"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-234"></span><span>
+</span><span id="line-235"></span><span class="annot"><span class="hs-comment">-- | Encode an 'Int64' as a JSON number.</span></span><span>
+</span><span id="line-236"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int64"><span class="hs-identifier hs-type">int64</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-237"></span><span id="int64"><span class="annot"><span class="annottext">int64 :: Int64 -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#int64"><span class="hs-identifier hs-var hs-var">int64</span></a></span></span><span> </span><span id="local-6989586621679095770"><span class="annot"><span class="annottext">Int64
+</span><a href="#local-6989586621679095770"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int64 -&gt; Builder
+</span><span class="hs-identifier hs-var">int64Dec</span></span><span> </span><span class="annot"><span class="annottext">Int64
+</span><a href="#local-6989586621679095770"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-238"></span><span>
+</span><span id="line-239"></span><span class="annot"><span class="hs-comment">-- | Encode an 'Int' as a JSON number.</span></span><span>
+</span><span id="line-240"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#int"><span class="hs-identifier hs-type">int</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-241"></span><span id="int"><span class="annot"><span class="annottext">int :: Int -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#int"><span class="hs-identifier hs-var hs-var">int</span></a></span></span><span> </span><span id="local-6989586621679095772"><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679095772"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Int -&gt; Builder
+</span><span class="hs-identifier hs-var">intDec</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><a href="#local-6989586621679095772"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-242"></span><span>
+</span><span id="line-243"></span><span class="annot"><span class="hs-comment">-- | Encode an 'Integer' as a JSON number.</span></span><span>
+</span><span id="line-244"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#integer"><span class="hs-identifier hs-type">integer</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Integer</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-245"></span><span id="integer"><span class="annot"><span class="annottext">integer :: Integer -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#integer"><span class="hs-identifier hs-var hs-var">integer</span></a></span></span><span> </span><span id="local-6989586621679095774"><span class="annot"><span class="annottext">Integer
+</span><a href="#local-6989586621679095774"><span class="hs-identifier hs-var">w</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Integer -&gt; Builder
+</span><span class="hs-identifier hs-var">integerDec</span></span><span> </span><span class="annot"><span class="annottext">Integer
+</span><a href="#local-6989586621679095774"><span class="hs-identifier hs-var">w</span></a></span><span>
+</span><span id="line-246"></span><span>
+</span><span id="line-247"></span><span>
+</span><span id="line-248"></span><span>
+</span><span id="line-249"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#nan"><span class="hs-identifier hs-type">nan</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#inf"><span class="hs-identifier hs-type">inf</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#ninf"><span class="hs-identifier hs-type">ninf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Builder</span></span><span>
+</span><span id="line-250"></span><span id="nan"><span class="annot"><span class="annottext">nan :: Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#nan"><span class="hs-identifier hs-var hs-var">nan</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">StrictByteString -&gt; Builder
+</span><span class="hs-identifier hs-var">byteString</span></span><span> </span><span class="annot"><span class="annottext">StrictByteString
+</span><span class="hs-string">&quot;NaN&quot;</span></span><span>
+</span><span id="line-251"></span><span id="inf"><span class="annot"><span class="annottext">inf :: Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#inf"><span class="hs-identifier hs-var hs-var">inf</span></a></span></span><span>  </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">StrictByteString -&gt; Builder
+</span><span class="hs-identifier hs-var">byteString</span></span><span> </span><span class="annot"><span class="annottext">StrictByteString
+</span><span class="hs-string">&quot;Infinity&quot;</span></span><span>
+</span><span id="line-252"></span><span id="ninf"><span class="annot"><span class="annottext">ninf :: Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#ninf"><span class="hs-identifier hs-var hs-var">ninf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">StrictByteString -&gt; Builder
+</span><span class="hs-identifier hs-var">byteString</span></span><span> </span><span class="annot"><span class="annottext">StrictByteString
+</span><span class="hs-string">&quot;-Infinity&quot;</span></span><span>
+</span><span id="line-253"></span><span>
+</span><span id="line-254"></span><span class="hs-comment">-- | Encode a 'Float' as a JSON number.</span><span>
+</span><span id="line-255"></span><span class="hs-comment">--</span><span>
+</span><span id="line-256"></span><span class="hs-comment">--   @NaN@, \(+\infty\) and \(-\infty\) are instead encoded as</span><span>
+</span><span id="line-257"></span><span class="hs-comment">--   @\&quot;NaN\&quot;@, @\&quot;Infinity\&quot;@ and @\&quot;-Infinity\&quot;@ JSON strings respectively.</span><span>
+</span><span id="line-258"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#float"><span class="hs-identifier hs-type">float</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Float</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-259"></span><span id="float"><span class="annot"><span class="annottext">float :: Float -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#float"><span class="hs-identifier hs-var hs-var">float</span></a></span></span><span> </span><span id="local-6989586621679095779"><span class="annot"><span class="annottext">Float
+</span><a href="#local-6989586621679095779"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-260"></span><span>  </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-261"></span><span>    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Float -&gt; Bool
+forall a. RealFloat a =&gt; a -&gt; Bool
+</span><span class="hs-identifier hs-var">isNaN</span></span><span> </span><span class="annot"><span class="annottext">Float
+</span><a href="#local-6989586621679095779"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-262"></span><span>      </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#nan"><span class="hs-identifier hs-var">nan</span></a></span><span>
+</span><span id="line-263"></span><span>      </span><span class="hs-keyword">else</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Float -&gt; Bool
+forall a. RealFloat a =&gt; a -&gt; Bool
+</span><span class="hs-identifier hs-var">isInfinite</span></span><span> </span><span class="annot"><span class="annottext">Float
+</span><a href="#local-6989586621679095779"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-264"></span><span>             </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Float
+</span><a href="#local-6989586621679095779"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Float -&gt; Float -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Float
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-265"></span><span>                    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#inf"><span class="hs-identifier hs-var">inf</span></a></span><span>
+</span><span id="line-266"></span><span>                    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#ninf"><span class="hs-identifier hs-var">ninf</span></a></span><span>
+</span><span id="line-267"></span><span>             </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Float -&gt; Builder
+</span><span class="hs-identifier hs-var">floatDec</span></span><span> </span><span class="annot"><span class="annottext">Float
+</span><a href="#local-6989586621679095779"><span class="hs-identifier hs-var">f</span></a></span><span>
+</span><span id="line-268"></span><span>
+</span><span id="line-269"></span><span class="hs-comment">-- | Encode a 'Float' as a JSON number.</span><span>
+</span><span id="line-270"></span><span class="hs-comment">--</span><span>
+</span><span id="line-271"></span><span class="hs-comment">--   @NaN@, \(+\infty\) and \(-\infty\) are instead encoded as</span><span>
+</span><span id="line-272"></span><span class="hs-comment">--   @\&quot;NaN\&quot;@, @\&quot;Infinity\&quot;@ and @\&quot;-Infinity\&quot;@ JSON strings respectively.</span><span>
+</span><span id="line-273"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#double"><span class="hs-identifier hs-type">double</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Double</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-274"></span><span id="double"><span class="annot"><span class="annottext">double :: Double -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#double"><span class="hs-identifier hs-var hs-var">double</span></a></span></span><span> </span><span id="local-6989586621679095783"><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679095783"><span class="hs-identifier hs-var">d</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-275"></span><span>  </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-276"></span><span>    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Bool
+forall a. RealFloat a =&gt; a -&gt; Bool
+</span><span class="hs-identifier hs-var">isNaN</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679095783"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-277"></span><span>      </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#nan"><span class="hs-identifier hs-var">nan</span></a></span><span>
+</span><span id="line-278"></span><span>      </span><span class="hs-keyword">else</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Bool
+forall a. RealFloat a =&gt; a -&gt; Bool
+</span><span class="hs-identifier hs-var">isInfinite</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679095783"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-279"></span><span>             </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">if</span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679095783"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Double -&gt; Double -&gt; Bool
+forall a. Ord a =&gt; a -&gt; a -&gt; Bool
+</span><span class="hs-operator hs-var">&gt;=</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><span class="hs-number">0</span></span><span>
+</span><span id="line-280"></span><span>                    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#inf"><span class="hs-identifier hs-var">inf</span></a></span><span>
+</span><span id="line-281"></span><span>                    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Builder
+</span><a href="Codec.JSON.Encoder.Internal.html#ninf"><span class="hs-identifier hs-var">ninf</span></a></span><span>
+</span><span id="line-282"></span><span>             </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="annottext">Double -&gt; Builder
+</span><span class="hs-identifier hs-var">doubleDec</span></span><span> </span><span class="annot"><span class="annottext">Double
+</span><a href="#local-6989586621679095783"><span class="hs-identifier hs-var">d</span></a></span><span>
+</span><span id="line-283"></span><span>
+</span><span id="line-284"></span><span>
+</span><span id="line-285"></span><span>
+</span><span id="line-286"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#true"><span class="hs-identifier hs-type">true</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-287"></span><span id="true"><span class="annot"><span class="annottext">true :: Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#true"><span class="hs-identifier hs-var hs-var">true</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Builder
+</span><span class="hs-identifier hs-var">word32BE</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x74727565</span></span><span>
+</span><span id="line-288"></span><span>
+</span><span id="line-289"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#false"><span class="hs-identifier hs-type">false</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-290"></span><span id="false"><span class="annot"><span class="annottext">false :: Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#false"><span class="hs-identifier hs-var hs-var">false</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-291"></span><span>          </span><span class="annot"><span class="annottext">FixedPrim () -&gt; () -&gt; Builder
+forall a. FixedPrim a -&gt; a -&gt; Builder
+</span><span class="hs-identifier hs-var">Prim.primFixed</span></span><span>
+</span><span id="line-292"></span><span>            </span><span class="hs-special">(</span><span class="hs-special">(</span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">()
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x66616C73</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Word8
+</span><span class="hs-number">0x65</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(() -&gt; (Word32, Word8))
+-&gt; FixedPrim (Word32, Word8) -&gt; FixedPrim ()
+forall (f :: * -&gt; *) b a. Contravariant f =&gt; (b -&gt; a) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">Prim.&gt;$&lt;</span></span><span> </span><span class="annot"><span class="annottext">FixedPrim Word32
+</span><span class="hs-identifier hs-var">Prim.word32BE</span></span><span> </span><span class="annot"><span class="annottext">FixedPrim Word32 -&gt; FixedPrim Word8 -&gt; FixedPrim (Word32, Word8)
+forall (f :: * -&gt; *) a b. Monoidal f =&gt; f a -&gt; f b -&gt; f (a, b)
+</span><span class="hs-operator hs-var">Prim.&gt;*&lt;</span></span><span> </span><span class="annot"><span class="annottext">FixedPrim Word8
+</span><span class="hs-identifier hs-var">Prim.word8</span></span><span class="hs-special">)</span><span>
+</span><span id="line-293"></span><span>            </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-294"></span><span>
+</span><span id="line-295"></span><span>
+</span><span id="line-296"></span><span>
+</span><span id="line-297"></span><span class="annot"><span class="hs-comment">-- | JSON null.</span></span><span>
+</span><span id="line-298"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#null"><span class="hs-identifier hs-type">null</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-299"></span><span id="null"><span class="annot"><span class="annottext">null :: Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#null"><span class="hs-identifier hs-var hs-var">null</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Word32 -&gt; Builder
+</span><span class="hs-identifier hs-var">word32BE</span></span><span> </span><span class="annot"><span class="annottext">Word32
+</span><span class="hs-number">0x6E756C6C</span></span><span>
+</span><span id="line-300"></span><span>
+</span><span id="line-301"></span><span>
+</span><span id="line-302"></span><span>
+</span><span id="line-303"></span><span class="annot"><span class="hs-comment">-- | Use a raw value as an encoder.</span></span><span>
+</span><span id="line-304"></span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#json"><span class="hs-identifier hs-type">json</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-type">Encoder</span></a></span><span>
+</span><span id="line-305"></span><span id="json"><span class="annot"><span class="annottext">json :: JSON -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#json"><span class="hs-identifier hs-var hs-var">json</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span> </span><span id="local-6989586621679095788"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679095788"><span class="hs-identifier hs-var">ro</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Builder -&gt; Encoder
+</span><a href="Codec.JSON.Encoder.Internal.html#Encoder"><span class="hs-identifier hs-var">Encoder</span></a></span><span> </span><span class="annot"><span class="annottext">(Builder -&gt; Encoder) -&gt; Builder -&gt; Encoder
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Builder
+</span><span class="hs-identifier hs-var">lazyByteString</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679095788"><span class="hs-identifier hs-var">ro</span></a></span><span>
+</span><span id="line-306"></span></pre></body></html>

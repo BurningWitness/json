@@ -1,0 +1,780 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="annot"><span class="hs-comment">{-| Functions for decoding common time formats in RFC 8259 JSONs.
+ -}</span></span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html"><span class="hs-identifier">Codec.JSON.Decoder.Time</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Calendar</span></span><span>
+</span><span id="line-8"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#year"><span class="hs-identifier">year</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#quarter"><span class="hs-identifier">quarter</span></a></span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Month</span></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#month"><span class="hs-identifier">month</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#monthDate"><span class="hs-identifier">monthDate</span></a></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Week</span></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#weekDate"><span class="hs-identifier">weekDate</span></a></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Ordinal</span></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#ordinalDate"><span class="hs-identifier">ordinalDate</span></a></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Time of day</span></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#timeOfDay"><span class="hs-identifier">timeOfDay</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Local</span></span><span>
+</span><span id="line-25"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#localTime"><span class="hs-identifier">localTime</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Zoned</span></span><span>
+</span><span id="line-28"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#timeZone"><span class="hs-identifier">timeZone</span></a></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#zonedTime"><span class="hs-identifier">zonedTime</span></a></span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.JSON.Decoder</span></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.JSON.Decoder.Unsafe</span></span><span>
+</span><span id="line-34"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.JSON.Decoder.String.Internal</span></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Time.Calendar</span></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Time.Calendar.Month</span></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Time.Calendar.Quarter</span></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Time.LocalTime</span></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe</span></span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Parser.Lathe.Time</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Lathe</span></span><span>
+</span><span id="line-42"></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-type">oob</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Error</span></span><span>
+</span><span id="line-46"></span><span id="oob"><span class="annot"><span class="annottext">oob :: String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var hs-var">oob</span></a></span></span><span> </span><span id="local-6989586621679042227"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042227"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-47"></span><span>  </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><span class="hs-identifier hs-var">Malformed</span></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><span class="hs-identifier hs-var">Benign</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Error) -&gt; String -&gt; Error
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-48"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042227"><span class="hs-identifier hs-var">name</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; is out of bounds&quot;</span></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-type">malformed</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Error</span></span><span>
+</span><span id="line-52"></span><span id="malformed"><span class="annot"><span class="annottext">malformed :: String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var hs-var">malformed</span></a></span></span><span> </span><span id="local-6989586621679042232"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042232"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span id="local-6989586621679042233"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042233"><span class="hs-identifier hs-var">format</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-53"></span><span>  </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><span class="hs-identifier hs-var">Malformed</span></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><span class="hs-identifier hs-var">Benign</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Error) -&gt; String -&gt; Error
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-54"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Expected &quot;</span></span><span> </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS -&gt; ShowS
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042232"><span class="hs-identifier hs-var">name</span></a></span><span> </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; encoded as &quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042233"><span class="hs-identifier hs-var">format</span></a></span><span>
+</span><span id="line-55"></span><span>
+</span><span id="line-56"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Error</span></span><span>
+</span><span id="line-57"></span><span id="trailing"><span class="annot"><span class="annottext">trailing :: String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-var hs-var">trailing</span></a></span></span><span> </span><span id="local-6989586621679042236"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042236"><span class="hs-identifier hs-var">name</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-58"></span><span>  </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><span class="hs-identifier hs-var">Malformed</span></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><span class="hs-identifier hs-var">Benign</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Error) -&gt; String -&gt; Error
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-59"></span><span>    </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Found trailing data after the &quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679042236"><span class="hs-identifier hs-var">name</span></a></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span>
+</span><span id="line-63"></span><span class="annot"><span class="hs-comment">-- | Decode a JSON string as an RFC 3339 year, in the @yyyy@ format.</span></span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#year"><span class="hs-identifier hs-type">year</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Year</span></span><span>
+</span><span id="line-65"></span><span id="year"><span class="annot"><span class="annottext">year :: Decoder Year
+</span><a href="Codec.JSON.Decoder.Time.html#year"><span class="hs-identifier hs-var hs-var">year</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-66"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Year) -&gt; Decoder Year
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Year)
+ -&gt; Decoder Year)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Year)
+-&gt; Decoder Year
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042238"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042238"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042239"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042239"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042240"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042240"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-67"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042240"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-68"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+-&gt; Path -&gt; Parser (Path, Error) Year -&gt; Parser (Path, Error) Year
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042238"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) Year -&gt; Parser (Path, Error) Year)
+-&gt; Parser (Path, Error) Year -&gt; Parser (Path, Error) Year
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-69"></span><span>             </span><span id="local-6989586621679042243"><span class="annot"><a href="#local-6989586621679042243"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) Year
+forall e. e -&gt; e -&gt; Parser e Year
+</span><span class="hs-identifier hs-var">Lathe.year</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042238"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;year&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;yyyy&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042238"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>             </span><span id="local-6989586621679042246"><span class="annot"><a href="#local-6989586621679042246"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-71"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042246"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-72"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042243"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-73"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042238"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;year&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-76"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042251"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042251"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042239"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-77"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Year
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042238"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042251"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042240"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span class="hs-comment">-- | Decode a JSON string as a quarter, in the @yyyy-Qqq@ format.</span><span>
+</span><span id="line-82"></span><span class="hs-comment">--</span><span>
+</span><span id="line-83"></span><span class="hs-comment">--   Note that year quarters are not defined by ISO 8601, this is an informal convention.</span><span>
+</span><span id="line-84"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#quarter"><span class="hs-identifier hs-type">quarter</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Quarter</span></span><span>
+</span><span id="line-85"></span><span id="quarter"><span class="annot"><span class="annottext">quarter :: Decoder Quarter
+</span><a href="Codec.JSON.Decoder.Time.html#quarter"><span class="hs-identifier hs-var hs-var">quarter</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-86"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Quarter)
+-&gt; Decoder Quarter
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Quarter)
+ -&gt; Decoder Quarter)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Quarter)
+-&gt; Decoder Quarter
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042254"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042254"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042255"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042255"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042256"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042256"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-87"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042256"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-88"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+-&gt; Path
+-&gt; Parser (Path, Error) Quarter
+-&gt; Parser (Path, Error) Quarter
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042254"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) Quarter -&gt; Parser (Path, Error) Quarter)
+-&gt; Parser (Path, Error) Quarter -&gt; Parser (Path, Error) Quarter
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-89"></span><span>             </span><span id="local-6989586621679042257"><span class="annot"><a href="#local-6989586621679042257"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+-&gt; (Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) Quarter
+forall e. e -&gt; e -&gt; e -&gt; Parser e Quarter
+</span><span class="hs-identifier hs-var">Lathe.quarter</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042254"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var">oob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Quarter&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-90"></span><span>                                </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042254"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;quarter&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;yyyy-Qq&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-91"></span><span>                                </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042254"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-92"></span><span>             </span><span id="local-6989586621679042259"><span class="annot"><a href="#local-6989586621679042259"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-93"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042259"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-94"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042257"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-95"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042254"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;quarter&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-98"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042261"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042261"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042255"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-99"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Quarter
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042254"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042261"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042256"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span class="annot"><span class="hs-comment">-- | Decode a JSON string as an RFC 3339 month, in the @yyyy-mm@ format.</span></span><span>
+</span><span id="line-104"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#month"><span class="hs-identifier hs-type">month</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Month</span></span><span>
+</span><span id="line-105"></span><span id="month"><span class="annot"><span class="annottext">month :: Decoder Month
+</span><a href="Codec.JSON.Decoder.Time.html#month"><span class="hs-identifier hs-var hs-var">month</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-106"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Month)
+-&gt; Decoder Month
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Month)
+ -&gt; Decoder Month)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Month)
+-&gt; Decoder Month
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042262"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042262"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042263"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042263"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042264"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042264"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-107"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042264"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-108"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+-&gt; Path -&gt; Parser (Path, Error) Month -&gt; Parser (Path, Error) Month
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042262"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) Month -&gt; Parser (Path, Error) Month)
+-&gt; Parser (Path, Error) Month -&gt; Parser (Path, Error) Month
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-109"></span><span>             </span><span id="local-6989586621679042265"><span class="annot"><a href="#local-6989586621679042265"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+-&gt; (Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) Month
+forall e. e -&gt; e -&gt; e -&gt; Parser e Month
+</span><span class="hs-identifier hs-var">Lathe.month</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042262"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var">oob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Month&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>                              </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042262"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;month&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;yyyy-mm&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-111"></span><span>                              </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042262"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-112"></span><span>             </span><span id="local-6989586621679042267"><span class="annot"><a href="#local-6989586621679042267"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-113"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042267"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-114"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042265"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-115"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042262"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;month&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-116"></span><span>
+</span><span id="line-117"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-118"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042269"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042269"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042263"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-119"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Month
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042262"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042269"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042264"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-120"></span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span class="annot"><span class="hs-comment">-- | Decode a JSON string as an RFC 3339 month date, in the @yyyy-mm-dd@ format.</span></span><span>
+</span><span id="line-124"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#monthDate"><span class="hs-identifier hs-type">monthDate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Day</span></span><span>
+</span><span id="line-125"></span><span id="monthDate"><span class="annot"><span class="annottext">monthDate :: Decoder Day
+</span><a href="Codec.JSON.Decoder.Time.html#monthDate"><span class="hs-identifier hs-var hs-var">monthDate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-126"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Day) -&gt; Decoder Day
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Day) -&gt; Decoder Day)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Day)
+-&gt; Decoder Day
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042270"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042270"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042271"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042271"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042272"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042272"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-127"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042272"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-128"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Path -&gt; Parser (Path, Error) Day -&gt; Parser (Path, Error) Day
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042270"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) Day -&gt; Parser (Path, Error) Day)
+-&gt; Parser (Path, Error) Day -&gt; Parser (Path, Error) Day
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-129"></span><span>             </span><span id="local-6989586621679042273"><span class="annot"><a href="#local-6989586621679042273"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+-&gt; (Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) Day
+forall e. e -&gt; e -&gt; e -&gt; Parser e Day
+</span><span class="hs-identifier hs-var">Lathe.monthDate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042270"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var">oob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Month&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-130"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042270"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;month&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;yyyy-mm-dd&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-131"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042270"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-132"></span><span>             </span><span id="local-6989586621679042275"><span class="annot"><a href="#local-6989586621679042275"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-133"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042275"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-134"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042273"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-135"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042270"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;month date&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-138"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042277"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042277"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042271"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-139"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Day
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042270"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042277"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042272"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-140"></span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span class="annot"><span class="hs-comment">-- | Decode a JSON string as an ISO 8601 week date, in the @yyyy-Www-d@ format.</span></span><span>
+</span><span id="line-144"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#weekDate"><span class="hs-identifier hs-type">weekDate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Day</span></span><span>
+</span><span id="line-145"></span><span id="weekDate"><span class="annot"><span class="annottext">weekDate :: Decoder Day
+</span><a href="Codec.JSON.Decoder.Time.html#weekDate"><span class="hs-identifier hs-var hs-var">weekDate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-146"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Day) -&gt; Decoder Day
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Day) -&gt; Decoder Day)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Day)
+-&gt; Decoder Day
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042278"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042278"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042279"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042279"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042280"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042280"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-147"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042280"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-148"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Path -&gt; Parser (Path, Error) Day -&gt; Parser (Path, Error) Day
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042278"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) Day -&gt; Parser (Path, Error) Day)
+-&gt; Parser (Path, Error) Day -&gt; Parser (Path, Error) Day
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-149"></span><span>             </span><span id="local-6989586621679042281"><span class="annot"><a href="#local-6989586621679042281"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+-&gt; (Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) Day
+forall e. e -&gt; e -&gt; e -&gt; Parser e Day
+</span><span class="hs-identifier hs-var">Lathe.weekDate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042278"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var">oob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Week date&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-150"></span><span>                                 </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042278"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;week date&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;yyyy-Www-d&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-151"></span><span>                                 </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042278"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-152"></span><span>             </span><span id="local-6989586621679042283"><span class="annot"><a href="#local-6989586621679042283"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-153"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042283"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-154"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042281"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-155"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042278"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;week date&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-156"></span><span>
+</span><span id="line-157"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-158"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042285"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042285"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042279"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-159"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Day
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042278"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042285"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042280"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-160"></span><span>
+</span><span id="line-161"></span><span>
+</span><span id="line-162"></span><span>
+</span><span id="line-163"></span><span class="annot"><span class="hs-comment">-- | Decode a JSON string as an ISO 8601 ordinal date, in the @yyyy-ddd@ format.</span></span><span>
+</span><span id="line-164"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#ordinalDate"><span class="hs-identifier hs-type">ordinalDate</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Day</span></span><span>
+</span><span id="line-165"></span><span id="ordinalDate"><span class="annot"><span class="annottext">ordinalDate :: Decoder Day
+</span><a href="Codec.JSON.Decoder.Time.html#ordinalDate"><span class="hs-identifier hs-var hs-var">ordinalDate</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-166"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Day) -&gt; Decoder Day
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Day) -&gt; Decoder Day)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Day)
+-&gt; Decoder Day
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042286"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042286"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042287"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042287"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042288"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042288"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-167"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042288"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-168"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Path -&gt; Parser (Path, Error) Day -&gt; Parser (Path, Error) Day
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042286"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) Day -&gt; Parser (Path, Error) Day)
+-&gt; Parser (Path, Error) Day -&gt; Parser (Path, Error) Day
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-169"></span><span>             </span><span id="local-6989586621679042289"><span class="annot"><a href="#local-6989586621679042289"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+-&gt; (Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) Day
+forall e. e -&gt; e -&gt; e -&gt; Parser e Day
+</span><span class="hs-identifier hs-var">Lathe.ordinalDate</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042286"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var">oob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Ordinal date&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-170"></span><span>                                    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042286"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;ordinal date&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;yyyy-ddd&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-171"></span><span>                                    </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042286"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-172"></span><span>             </span><span id="local-6989586621679042291"><span class="annot"><a href="#local-6989586621679042291"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-173"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042291"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-174"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042289"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-175"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042286"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;ordinal date&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-176"></span><span>
+</span><span id="line-177"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-178"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042293"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042293"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042287"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-179"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Day
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042286"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042293"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042288"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-180"></span><span>
+</span><span id="line-181"></span><span>
+</span><span id="line-182"></span><span>
+</span><span id="line-183"></span><span class="annot"><span class="hs-comment">-- | Decode a JSON string as an RFC 3339 time of day, in the @hh:mm:ss[.s&#8230;]@ format.</span></span><span>
+</span><span id="line-184"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#timeOfDay"><span class="hs-identifier hs-type">timeOfDay</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">TimeOfDay</span></span><span>
+</span><span id="line-185"></span><span id="timeOfDay"><span class="annot"><span class="annottext">timeOfDay :: Decoder TimeOfDay
+</span><a href="Codec.JSON.Decoder.Time.html#timeOfDay"><span class="hs-identifier hs-var hs-var">timeOfDay</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-186"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) TimeOfDay)
+-&gt; Decoder TimeOfDay
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) TimeOfDay)
+ -&gt; Decoder TimeOfDay)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) TimeOfDay)
+-&gt; Decoder TimeOfDay
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042294"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042294"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042295"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042295"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042296"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042296"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-187"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042296"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-188"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+-&gt; Path
+-&gt; Parser (Path, Error) TimeOfDay
+-&gt; Parser (Path, Error) TimeOfDay
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042294"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) TimeOfDay -&gt; Parser (Path, Error) TimeOfDay)
+-&gt; Parser (Path, Error) TimeOfDay -&gt; Parser (Path, Error) TimeOfDay
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-189"></span><span>             </span><span id="local-6989586621679042297"><span class="annot"><a href="#local-6989586621679042297"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+-&gt; (Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) TimeOfDay
+forall e. e -&gt; e -&gt; e -&gt; Parser e TimeOfDay
+</span><span class="hs-identifier hs-var">Lathe.timeOfDay</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042294"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var">oob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Time of day&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-190"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042294"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;time of day&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;hh:mm:ss[.s&#8230;]&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-191"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042294"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-192"></span><span>             </span><span id="local-6989586621679042299"><span class="annot"><a href="#local-6989586621679042299"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-193"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042299"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-194"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042297"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-195"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042294"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;time of day&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-196"></span><span>
+</span><span id="line-197"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-198"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042301"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042301"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042295"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-199"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) TimeOfDay
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042294"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042301"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042296"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-200"></span><span>
+</span><span id="line-201"></span><span>
+</span><span id="line-202"></span><span>
+</span><span id="line-203"></span><span class="hs-comment">-- | Decode a JSON string as an RFC 3339 local time, in the @yyyy-mm-ddThh:mm:ss[.s&#8230;]@ format.</span><span>
+</span><span id="line-204"></span><span class="hs-comment">--</span><span>
+</span><span id="line-205"></span><span class="hs-comment">--   Either @t@ or space is accepted instead of @T@.</span><span>
+</span><span id="line-206"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#localTime"><span class="hs-identifier hs-type">localTime</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">LocalTime</span></span><span>
+</span><span id="line-207"></span><span id="localTime"><span class="annot"><span class="annottext">localTime :: Decoder LocalTime
+</span><a href="Codec.JSON.Decoder.Time.html#localTime"><span class="hs-identifier hs-var hs-var">localTime</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-208"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) LocalTime)
+-&gt; Decoder LocalTime
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) LocalTime)
+ -&gt; Decoder LocalTime)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) LocalTime)
+-&gt; Decoder LocalTime
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042302"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042302"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042303"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042303"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042304"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042304"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-209"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042304"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-210"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+-&gt; Path
+-&gt; Parser (Path, Error) LocalTime
+-&gt; Parser (Path, Error) LocalTime
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042302"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) LocalTime -&gt; Parser (Path, Error) LocalTime)
+-&gt; Parser (Path, Error) LocalTime -&gt; Parser (Path, Error) LocalTime
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-211"></span><span>             </span><span id="local-6989586621679042305"><span class="annot"><a href="#local-6989586621679042305"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+-&gt; (Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) LocalTime
+forall e. e -&gt; e -&gt; e -&gt; Parser e LocalTime
+</span><span class="hs-identifier hs-var">Lathe.localTime</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042302"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var">oob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Local time&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-212"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042302"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;local time&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;yyyy-mm-ddThh:mm:ss[.s&#8230;]&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-213"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042302"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-214"></span><span>             </span><span id="local-6989586621679042307"><span class="annot"><a href="#local-6989586621679042307"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-215"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042307"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-216"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042305"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-217"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042302"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;local time&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-218"></span><span>
+</span><span id="line-219"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-220"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042309"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042309"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042303"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-221"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) LocalTime
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042302"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042309"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042304"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-222"></span><span>
+</span><span id="line-223"></span><span>
+</span><span id="line-224"></span><span>
+</span><span id="line-225"></span><span class="hs-comment">-- | Decode a JSON string as an RFC 3339 time zone, in either @Z@ or @&#177;hh:mm@ format.</span><span>
+</span><span id="line-226"></span><span class="hs-comment">--</span><span>
+</span><span id="line-227"></span><span class="hs-comment">--   @z@ is accepted instead of @Z@.</span><span>
+</span><span id="line-228"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#timeZone"><span class="hs-identifier hs-type">timeZone</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">TimeZone</span></span><span>
+</span><span id="line-229"></span><span id="timeZone"><span class="annot"><span class="annottext">timeZone :: Decoder TimeZone
+</span><a href="Codec.JSON.Decoder.Time.html#timeZone"><span class="hs-identifier hs-var hs-var">timeZone</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-230"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) TimeZone)
+-&gt; Decoder TimeZone
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) TimeZone)
+ -&gt; Decoder TimeZone)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) TimeZone)
+-&gt; Decoder TimeZone
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042310"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042310"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042311"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042311"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042312"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042312"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-231"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042312"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-232"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+-&gt; Path
+-&gt; Parser (Path, Error) TimeZone
+-&gt; Parser (Path, Error) TimeZone
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042310"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) TimeZone -&gt; Parser (Path, Error) TimeZone)
+-&gt; Parser (Path, Error) TimeZone -&gt; Parser (Path, Error) TimeZone
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-233"></span><span>             </span><span id="local-6989586621679042313"><span class="annot"><a href="#local-6989586621679042313"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+-&gt; (Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) TimeZone
+forall e. e -&gt; e -&gt; e -&gt; Parser e TimeZone
+</span><span class="hs-identifier hs-var">Lathe.timeZone</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042310"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var">oob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Time zone&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-234"></span><span>                                 </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042310"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;time zone&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;either Z or &#177;hh:mm&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-235"></span><span>                                 </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042310"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-236"></span><span>             </span><span id="local-6989586621679042315"><span class="annot"><a href="#local-6989586621679042315"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-237"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042315"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-238"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042313"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-239"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042310"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;time zone&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-240"></span><span>
+</span><span id="line-241"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-242"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042317"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042317"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042311"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-243"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) TimeZone
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042310"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042317"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042312"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-244"></span><span>
+</span><span id="line-245"></span><span>
+</span><span id="line-246"></span><span>
+</span><span id="line-247"></span><span>
+</span><span id="line-248"></span><span class="hs-comment">-- | Decode a JSON string as an RFC 3339 zoned time,</span><span>
+</span><span id="line-249"></span><span class="hs-comment">--   in the @yyyy-mm-ddThh:mm:ss[.s&#8230;]&#177;hh:mm@ format.</span><span>
+</span><span id="line-250"></span><span class="hs-comment">--</span><span>
+</span><span id="line-251"></span><span class="hs-comment">--   Combines behaviors of both 'timeOfDay' and 'zonedTime'.</span><span>
+</span><span id="line-252"></span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#zonedTime"><span class="hs-identifier hs-type">zonedTime</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">ZonedTime</span></span><span>
+</span><span id="line-253"></span><span id="zonedTime"><span class="annot"><span class="annottext">zonedTime :: Decoder ZonedTime
+</span><a href="Codec.JSON.Decoder.Time.html#zonedTime"><span class="hs-identifier hs-var hs-var">zonedTime</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-254"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) ZonedTime)
+-&gt; Decoder ZonedTime
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) ZonedTime)
+ -&gt; Decoder ZonedTime)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) ZonedTime)
+-&gt; Decoder ZonedTime
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679042318"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042318"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679042319"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042319"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679042320"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042320"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-255"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042320"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-256"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+-&gt; Path
+-&gt; Parser (Path, Error) ZonedTime
+-&gt; Parser (Path, Error) ZonedTime
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042318"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) ZonedTime -&gt; Parser (Path, Error) ZonedTime)
+-&gt; Parser (Path, Error) ZonedTime -&gt; Parser (Path, Error) ZonedTime
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-257"></span><span>             </span><span id="local-6989586621679042321"><span class="annot"><a href="#local-6989586621679042321"><span class="hs-identifier hs-var">u</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+-&gt; (Path, Error) -&gt; (Path, Error) -&gt; Parser (Path, Error) ZonedTime
+forall e. e -&gt; e -&gt; e -&gt; Parser e ZonedTime
+</span><span class="hs-identifier hs-var">Lathe.zonedTime</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042318"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#oob"><span class="hs-identifier hs-var">oob</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Zoned time&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-258"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042318"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Time.html#malformed"><span class="hs-identifier hs-var">malformed</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;zoned time&quot;</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;yyyy-mm-ddThh:mm:ss[.s&#8230;]&#177;hh:mm&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-259"></span><span>                                  </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042318"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-260"></span><span>             </span><span id="local-6989586621679042323"><span class="annot"><a href="#local-6989586621679042323"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="hs-identifier hs-type">atEnd</span></span><span>
+</span><span id="line-261"></span><span>             </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679042323"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-262"></span><span>               </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679042321"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-263"></span><span>               </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679042318"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Time.html#trailing"><span class="hs-identifier hs-type">trailing</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;zoned time&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-264"></span><span>
+</span><span id="line-265"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-266"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679042325"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679042325"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042319"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-267"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) ZonedTime
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679042318"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679042325"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679042320"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-268"></span></pre></body></html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="annot"><span class="hs-comment">{-| RFC 8259 JSON data type.
+ -}</span></span><span>
+</span><span id="line-3"></span><span>
+</span><span id="line-4"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Data.JSON.html"><span class="hs-identifier">Data.JSON</span></a></span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Itself</span></span><span>
+</span><span id="line-6"></span><span>    </span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier">JSON</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.JSON.html#getRaw"><span class="hs-identifier">getRaw</span></a></span><span>
+</span><span id="line-8"></span><span>
+</span><span id="line-9"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Key</span></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier">JSONKey</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.JSON.html#unKey"><span class="hs-identifier">unKey</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Data.JSON.Internal.html"><span class="hs-identifier">Data.JSON.Internal</span></a></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LB</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ByteString</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="annot"><span class="hs-comment">-- | Extract the lazy 'LB.ByteString' underlying the JSON value.</span></span><span>
+</span><span id="line-21"></span><span class="annot"><a href="Data.JSON.html#getRaw"><span class="hs-identifier hs-type">getRaw</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LB.ByteString</span></span><span>
+</span><span id="line-22"></span><span id="getRaw"><span class="annot"><span class="annottext">getRaw :: JSON -&gt; ByteString
+</span><a href="Data.JSON.html#getRaw"><span class="hs-identifier hs-var hs-var">getRaw</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span> </span><span id="local-6989586621679095412"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679095412"><span class="hs-identifier hs-var">ro</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679095412"><span class="hs-identifier hs-var">ro</span></a></span><span>
+</span><span id="line-23"></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="annot"><span class="hs-comment">-- | Downgrade a raw JSON object pair name to a raw JSON value.</span></span><span>
+</span><span id="line-27"></span><span class="annot"><a href="Data.JSON.html#unKey"><span class="hs-identifier hs-type">unKey</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-type">JSONKey</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span>
+</span><span id="line-28"></span><span id="unKey"><span class="annot"><span class="annottext">unKey :: JSONKey -&gt; JSON
+</span><a href="Data.JSON.html#unKey"><span class="hs-identifier hs-var hs-var">unKey</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-type">JSONKey</span></a></span><span> </span><span id="local-6989586621679095414"><span class="annot"><span class="annottext">JSON
+</span><a href="#local-6989586621679095414"><span class="hs-identifier hs-var">ro</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">JSON
+</span><a href="#local-6989586621679095414"><span class="hs-identifier hs-var">ro</span></a></span><span>
+</span><span id="line-29"></span></pre></body></html>

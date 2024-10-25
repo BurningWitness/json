@@ -1,0 +1,355 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html"><span class="hs-identifier">Codec.JSON.Decoder.String</span></a></span><span>
+</span><span id="line-4"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#string"><span class="hs-identifier">string</span></a></span><span>
+</span><span id="line-5"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#string%27"><span class="hs-identifier">string'</span></a></span><span>
+</span><span id="line-6"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#unsafeString"><span class="hs-identifier">unsafeString</span></a></span><span>
+</span><span id="line-7"></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#text"><span class="hs-identifier">text</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#text%27"><span class="hs-identifier">text'</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#unsafeText"><span class="hs-identifier">unsafeText</span></a></span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#lazyText"><span class="hs-identifier">lazyText</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#lazyText%27"><span class="hs-identifier">lazyText'</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#unsafeLazyText"><span class="hs-identifier">unsafeLazyText</span></a></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#stringified"><span class="hs-identifier">stringified</span></a></span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Composite.Internal</span></a></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Internal</span></a></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.String.Internal</span></a></span><span>
+</span><span id="line-22"></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Internal.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LT</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">defaultChunkSize</span></span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LT</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe</span></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-comment">-- | Decode a JSON string as a 'String'.</span><span>
+</span><span id="line-31"></span><span class="hs-comment">--</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--   Surrogate Unicode code points are replaced with @U+FFFD REPLACEMENT CHARACTER@.</span><span>
+</span><span id="line-33"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#string"><span class="hs-identifier hs-type">string</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-34"></span><span id="string"><span class="annot"><span class="annottext">string :: Decoder String
+</span><a href="Codec.JSON.Decoder.String.html#string"><span class="hs-identifier hs-var hs-var">string</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Decoder String
+</span><a href="Codec.JSON.Decoder.String.html#string_"><span class="hs-identifier hs-var">string_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Replace"><span class="hs-identifier hs-var">Replace</span></a></span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-comment">-- | Decode a JSON string as a 'String'.</span><span>
+</span><span id="line-37"></span><span class="hs-comment">--</span><span>
+</span><span id="line-38"></span><span class="hs-comment">--   Surrogate Unicode code points are treated as invalid input.</span><span>
+</span><span id="line-39"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#string%27"><span class="hs-identifier hs-type">string'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-40"></span><span id="string%27"><span class="annot"><span class="annottext">string' :: Decoder String
+</span><a href="Codec.JSON.Decoder.String.html#string%27"><span class="hs-identifier hs-var hs-var">string'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Decoder String
+</span><a href="Codec.JSON.Decoder.String.html#string_"><span class="hs-identifier hs-var">string_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Complain"><span class="hs-identifier hs-var">Complain</span></a></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-comment">-- | Decode a JSON string as a 'String'.</span><span>
+</span><span id="line-43"></span><span class="hs-comment">--</span><span>
+</span><span id="line-44"></span><span class="hs-comment">--   Surrogate Unicode code points are treated as valid scalar values.</span><span>
+</span><span id="line-45"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#unsafeString"><span class="hs-identifier hs-type">unsafeString</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-46"></span><span id="unsafeString"><span class="annot"><span class="annottext">unsafeString :: Decoder String
+</span><a href="Codec.JSON.Decoder.String.html#unsafeString"><span class="hs-identifier hs-var hs-var">unsafeString</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Decoder String
+</span><a href="Codec.JSON.Decoder.String.html#string_"><span class="hs-identifier hs-var">string_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Preserve"><span class="hs-identifier hs-var">Preserve</span></a></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#string_"><span class="hs-pragma hs-type">string_</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-49"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#string_"><span class="hs-identifier hs-type">string_</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html#SurrogateHandling"><span class="hs-identifier hs-type">SurrogateHandling</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-50"></span><span id="string_"><span class="annot"><span class="annottext">string_ :: SurrogateHandling -&gt; Decoder String
+</span><a href="Codec.JSON.Decoder.String.html#string_"><span class="hs-identifier hs-var hs-var">string_</span></a></span></span><span> </span><span id="local-6989586621679098205"><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="#local-6989586621679098205"><span class="hs-identifier hs-var">handl</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-51"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) String)
+-&gt; Decoder String
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-var">Decoder</span></a></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) String)
+ -&gt; Decoder String)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) String)
+-&gt; Decoder String
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679098207"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098207"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679098208"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098208"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679098209"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098209"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-52"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098209"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-53"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><a href="Codec.JSON.Decoder.Internal.html#S"><span class="hs-identifier hs-var">S</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) ()
+forall never. Parser never ()
+</span><span class="hs-identifier hs-var">skipEndOr1</span></span><span>
+</span><span id="line-54"></span><span>              </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Path -&gt; Parser (Path, Error) String
+</span><a href="Codec.JSON.Decoder.String.Internal.html#stringP"><span class="hs-identifier hs-var">stringP</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="#local-6989586621679098205"><span class="hs-identifier hs-var">handl</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098207"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-55"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-56"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679098215"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679098215"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098208"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="Codec.JSON.Decoder.Internal.html#StringBit"><span class="hs-identifier hs-var">StringBit</span></a></span><span>
+</span><span id="line-57"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) String
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098207"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Mismatch"><span class="hs-identifier hs-var">Mismatch</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098215"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098209"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-comment">-- | Decode a JSON string as a strict 'Text'.</span><span>
+</span><span id="line-62"></span><span class="hs-comment">--</span><span>
+</span><span id="line-63"></span><span class="hs-comment">--   Surrogate Unicode code points are replaced with @U+FFFD REPLACEMENT CHARACTER@.</span><span>
+</span><span id="line-64"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#text"><span class="hs-identifier hs-type">text</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-65"></span><span id="text"><span class="annot"><span class="annottext">text :: Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#text"><span class="hs-identifier hs-var hs-var">text</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#text_"><span class="hs-identifier hs-var">text_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Replace"><span class="hs-identifier hs-var">Replace</span></a></span><span>
+</span><span id="line-66"></span><span>
+</span><span id="line-67"></span><span class="hs-comment">-- | Decode a JSON text as a strict 'Text'.</span><span>
+</span><span id="line-68"></span><span class="hs-comment">--</span><span>
+</span><span id="line-69"></span><span class="hs-comment">--   Surrogate Unicode code points are treated as invalid input.</span><span>
+</span><span id="line-70"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#text%27"><span class="hs-identifier hs-type">text'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-71"></span><span id="text%27"><span class="annot"><span class="annottext">text' :: Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#text%27"><span class="hs-identifier hs-var hs-var">text'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#text_"><span class="hs-identifier hs-var">text_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Complain"><span class="hs-identifier hs-var">Complain</span></a></span><span>
+</span><span id="line-72"></span><span>
+</span><span id="line-73"></span><span class="hs-comment">-- | Decode a JSON text as a strict 'Text'.</span><span>
+</span><span id="line-74"></span><span class="hs-comment">--</span><span>
+</span><span id="line-75"></span><span class="hs-comment">--   Surrogate Unicode code points are treated as valid scalar values.</span><span>
+</span><span id="line-76"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#unsafeText"><span class="hs-identifier hs-type">unsafeText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-77"></span><span id="unsafeText"><span class="annot"><span class="annottext">unsafeText :: Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#unsafeText"><span class="hs-identifier hs-var hs-var">unsafeText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#text_"><span class="hs-identifier hs-var">text_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Preserve"><span class="hs-identifier hs-var">Preserve</span></a></span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#text_"><span class="hs-pragma hs-type">text_</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-80"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#text_"><span class="hs-identifier hs-type">text_</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html#SurrogateHandling"><span class="hs-identifier hs-type">SurrogateHandling</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-81"></span><span id="text_"><span class="annot"><span class="annottext">text_ :: SurrogateHandling -&gt; Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#text_"><span class="hs-identifier hs-var hs-var">text_</span></a></span></span><span> </span><span id="local-6989586621679098220"><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="#local-6989586621679098220"><span class="hs-identifier hs-var">handl</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-82"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Text) -&gt; Decoder Text
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-var">Decoder</span></a></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Text)
+ -&gt; Decoder Text)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Text)
+-&gt; Decoder Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679098221"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098221"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679098222"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098222"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679098223"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098223"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-83"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098223"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-84"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><a href="Codec.JSON.Decoder.Internal.html#S"><span class="hs-identifier hs-var">S</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) ()
+forall never. Parser never ()
+</span><span class="hs-identifier hs-var">skipEndOr1</span></span><span>
+</span><span id="line-85"></span><span>              </span><span id="local-6989586621679098224"><span class="annot"><a href="#local-6989586621679098224"><span class="hs-identifier hs-var">t</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Path -&gt; Parser (Path, Error) Text
+</span><a href="Codec.JSON.Decoder.String.html#lazyTextP"><span class="hs-identifier hs-var">lazyTextP</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="#local-6989586621679098220"><span class="hs-identifier hs-var">handl</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098221"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-86"></span><span>              </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$!</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.toStrict</span></span><span> </span><span class="annot"><a href="#local-6989586621679098224"><span class="hs-identifier hs-type">t</span></a></span><span>
+</span><span id="line-87"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-88"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679098229"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679098229"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098222"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="Codec.JSON.Decoder.Internal.html#StringBit"><span class="hs-identifier hs-var">StringBit</span></a></span><span>
+</span><span id="line-89"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Text
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098221"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Mismatch"><span class="hs-identifier hs-var">Mismatch</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098229"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098223"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-90"></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span class="hs-comment">-- | Decode a JSON string as a lazy 'LT.Text'.</span><span>
+</span><span id="line-94"></span><span class="hs-comment">--</span><span>
+</span><span id="line-95"></span><span class="hs-comment">--   Surrogate Unicode code points are replaced with @U+FFFD REPLACEMENT CHARACTER@.</span><span>
+</span><span id="line-96"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#lazyText"><span class="hs-identifier hs-type">lazyText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.Text</span></span><span>
+</span><span id="line-97"></span><span id="lazyText"><span class="annot"><span class="annottext">lazyText :: Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#lazyText"><span class="hs-identifier hs-var hs-var">lazyText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#lazyText_"><span class="hs-identifier hs-var">lazyText_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Replace"><span class="hs-identifier hs-var">Replace</span></a></span><span>
+</span><span id="line-98"></span><span>
+</span><span id="line-99"></span><span class="hs-comment">-- | Decode a JSON string as a lazy 'LT.Text'.</span><span>
+</span><span id="line-100"></span><span class="hs-comment">--</span><span>
+</span><span id="line-101"></span><span class="hs-comment">--   Surrogate Unicode code points are treated as invalid input.</span><span>
+</span><span id="line-102"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#lazyText%27"><span class="hs-identifier hs-type">lazyText'</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.Text</span></span><span>
+</span><span id="line-103"></span><span id="lazyText%27"><span class="annot"><span class="annottext">lazyText' :: Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#lazyText%27"><span class="hs-identifier hs-var hs-var">lazyText'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#lazyText_"><span class="hs-identifier hs-var">lazyText_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Complain"><span class="hs-identifier hs-var">Complain</span></a></span><span>
+</span><span id="line-104"></span><span>
+</span><span id="line-105"></span><span class="hs-comment">-- | Decode a JSON string as a lazy 'LT.Text'.</span><span>
+</span><span id="line-106"></span><span class="hs-comment">--</span><span>
+</span><span id="line-107"></span><span class="hs-comment">--   Surrogate Unicode code points are treated as valid scalar values.</span><span>
+</span><span id="line-108"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#unsafeLazyText"><span class="hs-identifier hs-type">unsafeLazyText</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.Text</span></span><span>
+</span><span id="line-109"></span><span id="unsafeLazyText"><span class="annot"><span class="annottext">unsafeLazyText :: Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#unsafeLazyText"><span class="hs-identifier hs-var hs-var">unsafeLazyText</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#lazyText_"><span class="hs-identifier hs-var">lazyText_</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Preserve"><span class="hs-identifier hs-var">Preserve</span></a></span><span>
+</span><span id="line-110"></span><span>
+</span><span id="line-111"></span><span class="hs-pragma">{-# INLINE</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#lazyText_"><span class="hs-pragma hs-type">lazyText_</span></a></span><span> </span><span class="hs-pragma">#-}</span><span>
+</span><span id="line-112"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#lazyText_"><span class="hs-identifier hs-type">lazyText_</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html#SurrogateHandling"><span class="hs-identifier hs-type">SurrogateHandling</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.Text</span></span><span>
+</span><span id="line-113"></span><span id="lazyText_"><span class="annot"><span class="annottext">lazyText_ :: SurrogateHandling -&gt; Decoder Text
+</span><a href="Codec.JSON.Decoder.String.html#lazyText_"><span class="hs-identifier hs-var hs-var">lazyText_</span></a></span></span><span> </span><span id="local-6989586621679098231"><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="#local-6989586621679098231"><span class="hs-identifier hs-var">handl</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-114"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Text) -&gt; Decoder Text
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-var">Decoder</span></a></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Text)
+ -&gt; Decoder Text)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) Text)
+-&gt; Decoder Text
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679098232"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098232"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679098233"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098233"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679098234"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098234"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-115"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098234"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-116"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><a href="Codec.JSON.Decoder.Internal.html#S"><span class="hs-identifier hs-var">S</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) ()
+forall never. Parser never ()
+</span><span class="hs-identifier hs-var">skipEndOr1</span></span><span>
+</span><span id="line-117"></span><span>              </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Path -&gt; Parser (Path, Error) Text
+</span><a href="Codec.JSON.Decoder.String.html#lazyTextP"><span class="hs-identifier hs-var">lazyTextP</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="#local-6989586621679098231"><span class="hs-identifier hs-var">handl</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098232"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-118"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-119"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679098236"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679098236"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098233"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="Codec.JSON.Decoder.Internal.html#StringBit"><span class="hs-identifier hs-var">StringBit</span></a></span><span>
+</span><span id="line-120"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) Text
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098232"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Mismatch"><span class="hs-identifier hs-var">Mismatch</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098236"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098234"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-121"></span><span>
+</span><span id="line-122"></span><span>
+</span><span id="line-123"></span><span>
+</span><span id="line-124"></span><span class="annot"><a href="Codec.JSON.Decoder.String.html#lazyTextP"><span class="hs-identifier hs-type">lazyTextP</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html#SurrogateHandling"><span class="hs-identifier hs-type">SurrogateHandling</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LT.Text</span></span><span>
+</span><span id="line-125"></span><span id="lazyTextP"><span class="annot"><span class="annottext">lazyTextP :: SurrogateHandling -&gt; Path -&gt; Parser (Path, Error) Text
+</span><a href="Codec.JSON.Decoder.String.html#lazyTextP"><span class="hs-identifier hs-var hs-var">lazyTextP</span></a></span></span><span> </span><span id="local-6989586621679098237"><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="#local-6989586621679098237"><span class="hs-identifier hs-var">handl</span></a></span></span><span> </span><span id="local-6989586621679098238"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098238"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Text -&gt; Text) -&gt; Parser (Path, Error) Text
+forall {b}. (Text -&gt; b) -&gt; Parser (Path, Error) b
+</span><a href="#local-6989586621679098239"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text
+forall a. a -&gt; a
+</span><span class="hs-identifier hs-var">id</span></span><span>
+</span><span id="line-126"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-127"></span><span>    </span><span id="local-6989586621679098239"><span class="annot"><span class="annottext">go :: (Text -&gt; b) -&gt; Parser (Path, Error) b
+</span><a href="#local-6989586621679098239"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679098244"><span class="annot"><span class="annottext">Text -&gt; b
+</span><a href="#local-6989586621679098244"><span class="hs-identifier hs-var">cs</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-128"></span><span>      </span><span id="local-6989586621679098245"><span class="annot"><a href="#local-6989586621679098245"><span class="hs-identifier hs-var">chunk</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SurrogateHandling -&gt; Path -&gt; Int -&gt; Parser (Path, Error) Chunk
+</span><a href="Codec.JSON.Decoder.String.Internal.html#chunkP"><span class="hs-identifier hs-var">chunkP</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling
+</span><a href="#local-6989586621679098237"><span class="hs-identifier hs-var">handl</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098238"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier hs-var">LT.defaultChunkSize</span></span><span>
+</span><span id="line-129"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679098245"><span class="hs-identifier hs-type">chunk</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-130"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html#Chunk"><span class="hs-identifier hs-type">Chunk</span></a></span><span> </span><span id="local-6989586621679098248"><span class="annot"><span class="annottext">More
+</span><a href="#local-6989586621679098248"><span class="hs-identifier hs-var">more</span></a></span></span><span> </span><span id="local-6989586621679098249"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679098249"><span class="hs-identifier hs-var">c</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-131"></span><span>          </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">More
+</span><a href="#local-6989586621679098248"><span class="hs-identifier hs-var">more</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-132"></span><span>            </span><span class="annot"><span class="annottext">More
+</span><span class="hs-identifier hs-var">More</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Text -&gt; b) -&gt; Parser (Path, Error) b
+</span><a href="#local-6989586621679098239"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; b
+</span><a href="#local-6989586621679098244"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="annot"><span class="annottext">(Text -&gt; b) -&gt; (Text -&gt; Text) -&gt; Text -&gt; b
+forall b c a. (b -&gt; c) -&gt; (a -&gt; b) -&gt; a -&gt; c
+</span><span class="hs-operator hs-var">.</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">LT.Chunk</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679098249"><span class="hs-identifier hs-var">c</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-133"></span><span>            </span><span class="annot"><span class="annottext">More
+</span><span class="hs-identifier hs-var">End</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679098254"><span class="annot"><span class="annottext">ll :: Text
+</span><a href="#local-6989586621679098254"><span class="hs-identifier hs-var hs-var">ll</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Text -&gt; Text
+</span><span class="hs-identifier hs-var">LT.Chunk</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679098249"><span class="hs-identifier hs-var">c</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-identifier hs-var">LT.empty</span></span><span>
+</span><span id="line-134"></span><span>                    </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">b -&gt; Parser (Path, Error) b
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(b -&gt; Parser (Path, Error) b) -&gt; b -&gt; Parser (Path, Error) b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$!</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; b
+</span><a href="#local-6989586621679098244"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679098254"><span class="hs-identifier hs-var">ll</span></a></span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span>        </span><span class="annot"><span class="annottext">Chunk
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Nil"><span class="hs-identifier hs-var">Nil</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; Parser (Path, Error) b
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(b -&gt; Parser (Path, Error) b) -&gt; b -&gt; Parser (Path, Error) b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$!</span></span><span> </span><span class="annot"><span class="annottext">Text -&gt; b
+</span><a href="#local-6989586621679098244"><span class="hs-identifier hs-var">cs</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><span class="hs-identifier hs-var">LT.empty</span></span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span>
+</span><span id="line-139"></span><span>
+</span><span id="line-140"></span><span class="annot"><span class="hs-comment">-- | Decode a JSON value embedded as a JSON string.</span></span><span>
+</span><span id="line-141"></span><span id="local-6989586621679098176"><span class="annot"><a href="Codec.JSON.Decoder.String.html#stringified"><span class="hs-identifier hs-type">stringified</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098176"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098176"><span class="hs-identifier hs-type">a</span></a></span></span><span>
+</span><span id="line-142"></span><span id="stringified"><span class="annot"><span class="annottext">stringified :: forall a. Decoder a -&gt; Decoder a
+</span><a href="Codec.JSON.Decoder.String.html#stringified"><span class="hs-identifier hs-var hs-var">stringified</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span id="local-6989586621679098259"><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a
+</span><a href="#local-6989586621679098259"><span class="hs-identifier hs-var">parser</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-143"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-var">Decoder</span></a></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679098260"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098260"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679098261"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098261"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679098262"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098262"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-144"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098262"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-145"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><a href="Codec.JSON.Decoder.Internal.html#S"><span class="hs-identifier hs-var">S</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><a href="Codec.JSON.Decoder.String.Internal.html#embedP"><span class="hs-identifier hs-var">embedP</span></a></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-identifier hs-var">LT.defaultChunkSize</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098260"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) a -&gt; Parser (Path, Error) a)
+-&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-146"></span><span>             </span><span id="local-6989586621679098264"><span class="annot"><a href="#local-6989586621679098264"><span class="hs-identifier hs-var">k'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) K
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#nextValueP"><span class="hs-identifier hs-var">nextValueP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098260"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-147"></span><span>             </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679098266"><span class="annot"><a href="#local-6989586621679098266"><span class="hs-identifier hs-var hs-var">str</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Unexpected trailing data in a stringified JSON&quot;</span></span><span>
+</span><span id="line-148"></span><span>             </span><span class="annot"><a href="#local-6989586621679098259"><span class="hs-identifier hs-type">parser</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098260"><span class="hs-identifier hs-type">path</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#EmptyBitmask"><span class="hs-identifier hs-type">EmptyBitmask</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098264"><span class="hs-identifier hs-type">k'</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">&lt;*</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#endOfInputP"><span class="hs-identifier hs-type">endOfInputP</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098260"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-type">Malformed</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Fatal"><span class="hs-identifier hs-type">Fatal</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098266"><span class="hs-identifier hs-type">str</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-149"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-150"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679098273"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679098273"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098261"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="Codec.JSON.Decoder.Internal.html#StringBit"><span class="hs-identifier hs-var">StringBit</span></a></span><span>
+</span><span id="line-151"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) a
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098260"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Mismatch"><span class="hs-identifier hs-var">Mismatch</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098273"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098262"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-152"></span></pre></body></html>

@@ -1,0 +1,689 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns
+           , RankNTypes
+           , UnboxedTuples #-}</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-pragma">{-# OPTIONS_HADDOCK hide #-}</span><span>
+</span><span id="line-6"></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Stream.Internal</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier">Stream</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#chainStream"><span class="hs-identifier">chainStream</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#unfoldStream"><span class="hs-identifier">unfoldStream</span></a></span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#mapStream"><span class="hs-identifier">mapStream</span></a></span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#foldStream"><span class="hs-identifier">foldStream</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#foldStream%27"><span class="hs-identifier">foldStream'</span></a></span><span>
+</span><span id="line-14"></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Source"><span class="hs-identifier">Source</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#sourceObjectP"><span class="hs-identifier">sourceObjectP</span></a></span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#sourceObjectP_"><span class="hs-identifier">sourceObjectP_</span></a></span><span>
+</span><span id="line-18"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#sourceArrayP"><span class="hs-identifier">sourceArrayP</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Composite.Internal</span></a></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.JSON.Internal</span></a></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Internal</span></a></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.String.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.String.Internal</span></a></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Data.JSON.Internal.html"><span class="hs-identifier">Data.JSON.Internal</span></a></span><span>
+</span><span id="line-26"></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe</span></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span class="hs-comment">-- | A list parametrized by an element type @a@, an  effect type @m@</span><span>
+</span><span id="line-32"></span><span class="hs-comment">--   and the return type @r@.</span><span>
+</span><span id="line-33"></span><span class="hs-keyword">data</span><span> </span><span id="Stream"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-var">Stream</span></a></span></span><span> </span><span id="local-6989586621679098419"><span class="annot"><a href="#local-6989586621679098419"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span id="local-6989586621679098420"><span class="annot"><a href="#local-6989586621679098420"><span class="hs-identifier hs-type">m</span></a></span></span><span> </span><span id="local-6989586621679098421"><span class="annot"><a href="#local-6989586621679098421"><span class="hs-identifier hs-type">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Yield"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-var">Yield</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679098419"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098419"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098420"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098421"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>                  </span><span class="hs-glyph">|</span><span> </span><span id="Effect"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-var">Effect</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098420"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098419"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098420"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098421"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span>                  </span><span class="hs-glyph">|</span><span> </span><span id="Return"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-var">Return</span></a></span></span><span> </span><span class="annot"><a href="#local-6989586621679098421"><span class="hs-identifier hs-type">r</span></a></span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679098413"><span id="local-6989586621679098414"><span id="local-6989586621679098536"><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="annot"><a href="#local-6989586621679098413"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098414"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098413"><span class="hs-identifier hs-type">m</span></a></span><span class="hs-special">)</span></span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-38"></span><span>  </span><span id="local-6989586621679098541"><span class="annot"><span class="annottext">fmap :: forall a b. (a -&gt; b) -&gt; Stream a m a -&gt; Stream a m b
+</span><span class="hs-identifier hs-var hs-var hs-var">fmap</span></span></span><span> </span><span id="local-6989586621679098542"><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679098542"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Stream a m a -&gt; Stream a m b
+forall {m :: * -&gt; *} {a}. Functor m =&gt; Stream a m a -&gt; Stream a m b
+</span><a href="#local-6989586621679098543"><span class="hs-identifier hs-var">go</span></a></span><span>
+</span><span id="line-39"></span><span>    </span><span class="hs-keyword">where</span><span>
+</span><span id="line-40"></span><span>      </span><span id="local-6989586621679098543"><span class="annot"><span class="annottext">go :: Stream a m a -&gt; Stream a m b
+</span><a href="#local-6989586621679098543"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679098546"><span class="annot"><span class="annottext">Stream a m a
+</span><a href="#local-6989586621679098546"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-41"></span><span>        </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Stream a m a
+</span><a href="#local-6989586621679098546"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-42"></span><span>          </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-type">Yield</span></a></span><span> </span><span id="local-6989586621679098547"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098547"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679098548"><span class="annot"><span class="annottext">Stream a m a
+</span><a href="#local-6989586621679098548"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; Stream a m b -&gt; Stream a m b
+forall a (m :: * -&gt; *) r. a -&gt; Stream a m r -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-var">Yield</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098547"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Stream a m a -&gt; Stream a m b
+</span><a href="#local-6989586621679098543"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Stream a m a
+</span><a href="#local-6989586621679098548"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span><span>          </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span id="local-6989586621679098549"><span class="annot"><span class="annottext">m (Stream a m a)
+</span><a href="#local-6989586621679098549"><span class="hs-identifier hs-var">m</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">m (Stream a m b) -&gt; Stream a m b
+forall a (m :: * -&gt; *) r. m (Stream a m r) -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-var">Effect</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Stream a m a -&gt; Stream a m b
+</span><a href="#local-6989586621679098543"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">(Stream a m a -&gt; Stream a m b)
+-&gt; m (Stream a m a) -&gt; m (Stream a m b)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">m (Stream a m a)
+</span><a href="#local-6989586621679098549"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-44"></span><span>          </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span id="local-6989586621679098551"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098551"><span class="hs-identifier hs-var">r</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; Stream a m b
+forall a (m :: * -&gt; *) r. r -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-var">Return</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679098542"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098551"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span>
+</span><span id="line-47"></span><span>
+</span><span id="line-48"></span><span id="local-6989586621679098425"><span id="local-6989586621679098426"><span id="local-6989586621679098428"><span id="local-6989586621679098429"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#chainStream"><span class="hs-identifier hs-type">chainStream</span></a></span><span>
+</span><span id="line-49"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098425"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="#local-6989586621679098426"><span class="hs-identifier hs-type">e</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098428"><span class="hs-identifier hs-type">r</span></a></span><span>
+</span><span id="line-50"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098428"><span class="hs-identifier hs-type">r</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098425"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="#local-6989586621679098426"><span class="hs-identifier hs-type">e</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098429"><span class="hs-identifier hs-type">o</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098425"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="annot"><a href="#local-6989586621679098426"><span class="hs-identifier hs-type">e</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098429"><span class="hs-identifier hs-type">o</span></a></span></span></span></span></span><span>
+</span><span id="line-52"></span><span id="chainStream"><span class="annot"><span class="annottext">chainStream :: forall a e r o.
+Stream a (Parser e) r
+-&gt; (r -&gt; Stream a (Parser e) o) -&gt; Stream a (Parser e) o
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#chainStream"><span class="hs-identifier hs-var hs-var">chainStream</span></a></span></span><span> </span><span id="local-6989586621679098552"><span class="annot"><span class="annottext">Stream a (Parser e) r
+</span><a href="#local-6989586621679098552"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span id="local-6989586621679098553"><span class="annot"><span class="annottext">r -&gt; Stream a (Parser e) o
+</span><a href="#local-6989586621679098553"><span class="hs-identifier hs-var">next</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Stream a (Parser e) r -&gt; Stream a (Parser e) o
+</span><a href="#local-6989586621679098554"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Stream a (Parser e) r
+</span><a href="#local-6989586621679098552"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-53"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-54"></span><span>    </span><span id="local-6989586621679098554"><span class="annot"><span class="annottext">go :: Stream a (Parser e) r -&gt; Stream a (Parser e) o
+</span><a href="#local-6989586621679098554"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679098557"><span class="annot"><span class="annottext">Stream a (Parser e) r
+</span><a href="#local-6989586621679098557"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-55"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Stream a (Parser e) r
+</span><a href="#local-6989586621679098557"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-56"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-type">Yield</span></a></span><span> </span><span id="local-6989586621679098558"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098558"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679098559"><span class="annot"><span class="annottext">Stream a (Parser e) r
+</span><a href="#local-6989586621679098559"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; Stream a (Parser e) o -&gt; Stream a (Parser e) o
+forall a (m :: * -&gt; *) r. a -&gt; Stream a m r -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-var">Yield</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098558"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Stream a (Parser e) r -&gt; Stream a (Parser e) o
+</span><a href="#local-6989586621679098554"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Stream a (Parser e) r
+</span><a href="#local-6989586621679098559"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span id="local-6989586621679098560"><span class="annot"><span class="annottext">Parser e (Stream a (Parser e) r)
+</span><a href="#local-6989586621679098560"><span class="hs-identifier hs-var">one</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Parser e (Stream a (Parser e) o) -&gt; Stream a (Parser e) o
+forall a (m :: * -&gt; *) r. m (Stream a m r) -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-var">Effect</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Stream a (Parser e) r -&gt; Stream a (Parser e) o
+</span><a href="#local-6989586621679098554"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">(Stream a (Parser e) r -&gt; Stream a (Parser e) o)
+-&gt; Parser e (Stream a (Parser e) r)
+-&gt; Parser e (Stream a (Parser e) o)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Parser e (Stream a (Parser e) r)
+</span><a href="#local-6989586621679098560"><span class="hs-identifier hs-var">one</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span id="local-6989586621679098561"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098561"><span class="hs-identifier hs-var">r</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">r -&gt; Stream a (Parser e) o
+</span><a href="#local-6989586621679098553"><span class="hs-identifier hs-var">next</span></a></span><span> </span><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098561"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-59"></span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span id="local-6989586621679098436"><span id="local-6989586621679098439"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#unfoldStream"><span class="hs-identifier hs-type">unfoldStream</span></a></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Blank</span></span><span>
+</span><span id="line-63"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098436"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098439"><span class="hs-identifier hs-type">r</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098436"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Partial</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Blank</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098439"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-65"></span><span id="unfoldStream"><span class="annot"><span class="annottext">unfoldStream :: forall a r.
+Blank
+-&gt; Stream a (Parser (Path, Error)) r
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#unfoldStream"><span class="hs-identifier hs-var hs-var">unfoldStream</span></a></span></span><span> </span><span id="local-6989586621679098562"><span class="annot"><span class="annottext">Blank
+</span><a href="#local-6989586621679098562"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span id="local-6989586621679098563"><span class="annot"><span class="annottext">Stream a (Parser (Path, Error)) r
+</span><a href="#local-6989586621679098563"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Stream a (Parser (Path, Error)) r
+</span><a href="#local-6989586621679098563"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-67"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-type">Yield</span></a></span><span> </span><span id="local-6989586621679098564"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098564"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679098565"><span class="annot"><span class="annottext">Stream a (Parser (Path, Error)) r
+</span><a href="#local-6989586621679098565"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+forall a (m :: * -&gt; *) r. a -&gt; Stream a m r -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-var">Yield</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098564"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Blank
+-&gt; Stream a (Parser (Path, Error)) r
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+forall a r.
+Blank
+-&gt; Stream a (Parser (Path, Error)) r
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#unfoldStream"><span class="hs-identifier hs-var">unfoldStream</span></a></span><span> </span><span class="annot"><span class="annottext">Blank
+</span><a href="#local-6989586621679098562"><span class="hs-identifier hs-var">b</span></a></span><span> </span><span class="annot"><span class="annottext">Stream a (Parser (Path, Error)) r
+</span><a href="#local-6989586621679098565"><span class="hs-identifier hs-var">s'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span id="local-6989586621679098566"><span class="annot"><span class="annottext">Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="#local-6989586621679098566"><span class="hs-identifier hs-var">m</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Partial (Stream a Partial (Blank, Either (Path, Error) r))
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+forall a (m :: * -&gt; *) r. m (Stream a m r) -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-var">Effect</span></a></span><span> </span><span class="annot"><span class="annottext">(Partial (Stream a Partial (Blank, Either (Path, Error) r))
+ -&gt; Stream a Partial (Blank, Either (Path, Error) r))
+-&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r))
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Partial
+  (Blank, Either (Path, Error) (Stream a (Parser (Path, Error)) r))
+-&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r))
+forall {a} {r}.
+Partial
+  (Blank, Either (Path, Error) (Stream a (Parser (Path, Error)) r))
+-&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r))
+</span><a href="#local-6989586621679098567"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+-&gt; Blank
+-&gt; Partial
+     (Blank, Either (Path, Error) (Stream a (Parser (Path, Error)) r))
+forall e a. Parser e a -&gt; Blank -&gt; Partial (Blank, Either e a)
+</span><span class="hs-identifier hs-var">draw</span></span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="#local-6989586621679098566"><span class="hs-identifier hs-var">m</span></a></span><span> </span><span class="annot"><span class="annottext">Blank
+</span><a href="#local-6989586621679098562"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-69"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-70"></span><span>        </span><span id="local-6989586621679098567"><span class="annot"><span class="annottext">go :: Partial
+  (Blank, Either (Path, Error) (Stream a (Parser (Path, Error)) r))
+-&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r))
+</span><a href="#local-6989586621679098567"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679098569"><span class="annot"><span class="annottext">Partial
+  (Blank, Either (Path, Error) (Stream a (Parser (Path, Error)) r))
+</span><a href="#local-6989586621679098569"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-71"></span><span>          </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Partial
+  (Blank, Either (Path, Error) (Stream a (Parser (Path, Error)) r))
+</span><a href="#local-6989586621679098569"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-72"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Partial</span></span><span> </span><span id="local-6989586621679098571"><span class="annot"><span class="annottext">Resupply
+-&gt; Partial
+     (Blank, Either (Path, Error) (Stream a (Parser (Path, Error)) r))
+</span><a href="#local-6989586621679098571"><span class="hs-identifier hs-var">re</span></a></span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Resupply
+ -&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r)))
+-&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r))
+forall a. (Resupply -&gt; Partial a) -&gt; Partial a
+</span><span class="hs-identifier hs-var">Partial</span></span><span> </span><span class="annot"><span class="annottext">((Resupply
+  -&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r)))
+ -&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r)))
+-&gt; (Resupply
+    -&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r)))
+-&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679098572"><span class="annot"><span class="annottext">Resupply
+</span><a href="#local-6989586621679098572"><span class="hs-identifier hs-var">supply</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Partial
+  (Blank, Either (Path, Error) (Stream a (Parser (Path, Error)) r))
+-&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r))
+</span><a href="#local-6989586621679098567"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Resupply
+-&gt; Partial
+     (Blank, Either (Path, Error) (Stream a (Parser (Path, Error)) r))
+</span><a href="#local-6989586621679098571"><span class="hs-identifier hs-var">re</span></a></span><span> </span><span class="annot"><span class="annottext">Resupply
+</span><a href="#local-6989586621679098572"><span class="hs-identifier hs-var">supply</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Done</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679098574"><span class="annot"><span class="annottext">Blank
+</span><a href="#local-6989586621679098574"><span class="hs-identifier hs-var">b'</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098575"><span class="annot"><span class="annottext">Either (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="#local-6989586621679098575"><span class="hs-identifier hs-var">ei</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-74"></span><span>              </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span class="hs-special">(#</span><span> </span><span id="local-6989586621679098576"><span class="annot"><span class="annottext">Stream a Partial (Blank, Either (Path, Error) r)
+</span><a href="#local-6989586621679098576"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-special">#)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="#local-6989586621679098575"><span class="hs-identifier hs-var">ei</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-75"></span><span>                               </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679098577"><span class="annot"><span class="annottext">Stream a (Parser (Path, Error)) r
+</span><a href="#local-6989586621679098577"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(#</span><span> </span><span class="annot"><span class="annottext">Blank
+-&gt; Stream a (Parser (Path, Error)) r
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+forall a r.
+Blank
+-&gt; Stream a (Parser (Path, Error)) r
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#unfoldStream"><span class="hs-identifier hs-var">unfoldStream</span></a></span><span> </span><span class="annot"><span class="annottext">Blank
+</span><a href="#local-6989586621679098574"><span class="hs-identifier hs-var">b'</span></a></span><span> </span><span class="annot"><span class="annottext">Stream a (Parser (Path, Error)) r
+</span><a href="#local-6989586621679098577"><span class="hs-identifier hs-var">s'</span></a></span><span> </span><span class="hs-special">#)</span><span>
+</span><span id="line-76"></span><span>                               </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679098578"><span class="annot"><span class="annottext">(Path, Error)
+</span><a href="#local-6989586621679098578"><span class="hs-identifier hs-var">e</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(#</span><span> </span><span class="annot"><span class="annottext">(Blank, Either (Path, Error) r)
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+forall a (m :: * -&gt; *) r. r -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-var">Return</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Blank
+</span><a href="#local-6989586621679098574"><span class="hs-identifier hs-var">b'</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Either (Path, Error) r
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">(Path, Error)
+</span><a href="#local-6989586621679098578"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">#)</span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span>              </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">Stream a Partial (Blank, Either (Path, Error) r)
+-&gt; Partial (Stream a Partial (Blank, Either (Path, Error) r))
+forall a. a -&gt; Partial a
+</span><span class="hs-identifier hs-var">Done</span></span><span> </span><span class="annot"><span class="annottext">Stream a Partial (Blank, Either (Path, Error) r)
+</span><a href="#local-6989586621679098576"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span id="local-6989586621679098579"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098579"><span class="hs-identifier hs-var">r</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Blank, Either (Path, Error) r)
+-&gt; Stream a Partial (Blank, Either (Path, Error) r)
+forall a (m :: * -&gt; *) r. r -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-var">Return</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Blank
+</span><a href="#local-6989586621679098562"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">r -&gt; Either (Path, Error) r
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098579"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span>
+</span><span id="line-83"></span><span>
+</span><span id="line-84"></span><span id="local-6989586621679098455"><span id="local-6989586621679098456"><span id="local-6989586621679098457"><span id="local-6989586621679098458"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#mapStream"><span class="hs-identifier hs-type">mapStream</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="annot"><a href="#local-6989586621679098455"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098456"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098457"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098456"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098455"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098458"><span class="hs-identifier hs-type">r</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098457"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098455"><span class="hs-identifier hs-type">m</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098458"><span class="hs-identifier hs-type">r</span></a></span></span></span></span></span><span>
+</span><span id="line-85"></span><span id="mapStream"><span class="annot"><span class="annottext">mapStream :: forall (m :: * -&gt; *) a b r.
+Functor m =&gt;
+(a -&gt; b) -&gt; Stream a m r -&gt; Stream b m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#mapStream"><span class="hs-identifier hs-var hs-var">mapStream</span></a></span></span><span> </span><span id="local-6989586621679098582"><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679098582"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Stream a m r -&gt; Stream b m r
+forall {m :: * -&gt; *} {r}. Functor m =&gt; Stream a m r -&gt; Stream b m r
+</span><a href="#local-6989586621679098583"><span class="hs-identifier hs-var">go</span></a></span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-87"></span><span>    </span><span id="local-6989586621679098583"><span class="annot"><span class="annottext">go :: Stream a m r -&gt; Stream b m r
+</span><a href="#local-6989586621679098583"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679098586"><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098586"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-88"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098586"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-89"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-type">Yield</span></a></span><span> </span><span id="local-6989586621679098587"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098587"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679098588"><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098588"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; Stream b m r -&gt; Stream b m r
+forall a (m :: * -&gt; *) r. a -&gt; Stream a m r -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-var">Yield</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679098582"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098587"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(Stream b m r -&gt; Stream b m r) -&gt; Stream b m r -&gt; Stream b m r
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Stream a m r -&gt; Stream b m r
+</span><a href="#local-6989586621679098583"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098588"><span class="hs-identifier hs-var">s'</span></a></span><span>
+</span><span id="line-90"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span id="local-6989586621679098589"><span class="annot"><span class="annottext">m (Stream a m r)
+</span><a href="#local-6989586621679098589"><span class="hs-identifier hs-var">m</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">m (Stream b m r) -&gt; Stream b m r
+forall a (m :: * -&gt; *) r. m (Stream a m r) -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-var">Effect</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Stream a m r -&gt; Stream b m r
+</span><a href="#local-6989586621679098583"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">(Stream a m r -&gt; Stream b m r)
+-&gt; m (Stream a m r) -&gt; m (Stream b m r)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">m (Stream a m r)
+</span><a href="#local-6989586621679098589"><span class="hs-identifier hs-var">m</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-91"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span id="local-6989586621679098590"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098590"><span class="hs-identifier hs-var">r</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">r -&gt; Stream b m r
+forall a (m :: * -&gt; *) r. r -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-var">Return</span></a></span><span> </span><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098590"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-92"></span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span>
+</span><span id="line-95"></span><span id="local-6989586621679098465"><span id="local-6989586621679098466"><span id="local-6989586621679098467"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#foldStream"><span class="hs-identifier hs-type">foldStream</span></a></span><span>
+</span><span id="line-96"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098465"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098466"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098465"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-97"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098465"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098467"><span class="hs-identifier hs-type">r</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098465"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-98"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098465"><span class="hs-identifier hs-type">b</span></a></span><span>
+</span><span id="line-99"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098466"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098467"><span class="hs-identifier hs-type">r</span></a></span><span>
+</span><span id="line-100"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098465"><span class="hs-identifier hs-type">b</span></a></span></span></span></span><span>
+</span><span id="line-101"></span><span id="foldStream"><span class="annot"><span class="annottext">foldStream :: forall b a r.
+(b -&gt; a -&gt; b)
+-&gt; (b -&gt; r -&gt; b)
+-&gt; b
+-&gt; Stream a (Parser (Path, Error)) r
+-&gt; Parser (Path, Error) b
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#foldStream"><span class="hs-identifier hs-var hs-var">foldStream</span></a></span></span><span> </span><span id="local-6989586621679098593"><span class="annot"><span class="annottext">b -&gt; a -&gt; b
+</span><a href="#local-6989586621679098593"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679098594"><span class="annot"><span class="annottext">b -&gt; r -&gt; b
+</span><a href="#local-6989586621679098594"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">b -&gt; Stream a (Parser (Path, Error)) r -&gt; Parser (Path, Error) b
+forall {m :: * -&gt; *}. Monad m =&gt; b -&gt; Stream a m r -&gt; m b
+</span><a href="#local-6989586621679098595"><span class="hs-identifier hs-var">go</span></a></span><span>
+</span><span id="line-102"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-103"></span><span>    </span><span id="local-6989586621679098595"><span class="annot"><span class="annottext">go :: b -&gt; Stream a m r -&gt; m b
+</span><a href="#local-6989586621679098595"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679098606"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679098606"><span class="hs-identifier hs-var">z</span></a></span></span><span> </span><span id="local-6989586621679098607"><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098607"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-104"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098607"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-105"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-type">Yield</span></a></span><span> </span><span id="local-6989586621679098608"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098608"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679098609"><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098609"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; Stream a m r -&gt; m b
+</span><a href="#local-6989586621679098595"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; a -&gt; b
+</span><a href="#local-6989586621679098593"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679098606"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098608"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098609"><span class="hs-identifier hs-var">s'</span></a></span><span>
+</span><span id="line-106"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span id="local-6989586621679098610"><span class="annot"><span class="annottext">m (Stream a m r)
+</span><a href="#local-6989586621679098610"><span class="hs-identifier hs-var">m</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; Stream a m r -&gt; m b
+</span><a href="#local-6989586621679098595"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679098606"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="annot"><span class="annottext">(Stream a m r -&gt; m b) -&gt; m (Stream a m r) -&gt; m b
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; m a -&gt; m b
+</span><span class="hs-operator hs-var">=&lt;&lt;</span></span><span> </span><span class="annot"><span class="annottext">m (Stream a m r)
+</span><a href="#local-6989586621679098610"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-107"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span id="local-6989586621679098612"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098612"><span class="hs-identifier hs-var">r</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; m b
+forall a. a -&gt; m a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">b -&gt; r -&gt; b
+</span><a href="#local-6989586621679098594"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679098606"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098612"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-108"></span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span id="local-6989586621679098613"><span id="local-6989586621679098614"><span id="local-6989586621679098615"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#foldStream%27"><span class="hs-identifier hs-type">foldStream'</span></a></span><span>
+</span><span id="line-111"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098613"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098614"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098613"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-112"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098613"><span class="hs-identifier hs-type">b</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098615"><span class="hs-identifier hs-type">r</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098613"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098613"><span class="hs-identifier hs-type">b</span></a></span><span>
+</span><span id="line-114"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098614"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098615"><span class="hs-identifier hs-type">r</span></a></span><span>
+</span><span id="line-115"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098613"><span class="hs-identifier hs-type">b</span></a></span></span></span></span><span>
+</span><span id="line-116"></span><span id="foldStream%27"><span class="annot"><span class="annottext">foldStream' :: forall b a r.
+(b -&gt; a -&gt; b)
+-&gt; (b -&gt; r -&gt; b)
+-&gt; b
+-&gt; Stream a (Parser (Path, Error)) r
+-&gt; Parser (Path, Error) b
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#foldStream%27"><span class="hs-identifier hs-var hs-var">foldStream'</span></a></span></span><span> </span><span id="local-6989586621679098617"><span class="annot"><span class="annottext">b -&gt; a -&gt; b
+</span><a href="#local-6989586621679098617"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679098618"><span class="annot"><span class="annottext">b -&gt; r -&gt; b
+</span><a href="#local-6989586621679098618"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">b -&gt; Stream a (Parser (Path, Error)) r -&gt; Parser (Path, Error) b
+forall {m :: * -&gt; *}. Monad m =&gt; b -&gt; Stream a m r -&gt; m b
+</span><a href="#local-6989586621679098619"><span class="hs-identifier hs-var">go</span></a></span><span>
+</span><span id="line-117"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-118"></span><span>    </span><span id="local-6989586621679098619"><span class="annot"><span class="annottext">go :: b -&gt; Stream a m r -&gt; m b
+</span><a href="#local-6989586621679098619"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679098628"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679098628"><span class="hs-identifier hs-var">z</span></a></span></span><span> </span><span id="local-6989586621679098629"><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098629"><span class="hs-identifier hs-var">s</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-119"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098629"><span class="hs-identifier hs-var">s</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-120"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Yield"><span class="hs-identifier hs-type">Yield</span></a></span><span> </span><span id="local-6989586621679098630"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098630"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span id="local-6989586621679098631"><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098631"><span class="hs-identifier hs-var">s'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679098632"><span class="annot"><span class="annottext">z' :: b
+</span><a href="#local-6989586621679098632"><span class="hs-identifier hs-var hs-var">z'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">b -&gt; a -&gt; b
+</span><a href="#local-6989586621679098617"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679098628"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679098630"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">b -&gt; Stream a m r -&gt; m b
+</span><a href="#local-6989586621679098619"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679098632"><span class="hs-identifier hs-var">z'</span></a></span><span> </span><span class="annot"><span class="annottext">Stream a m r
+</span><a href="#local-6989586621679098631"><span class="hs-identifier hs-var">s'</span></a></span><span>
+</span><span id="line-121"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-type">Effect</span></a></span><span> </span><span id="local-6989586621679098633"><span class="annot"><span class="annottext">m (Stream a m r)
+</span><a href="#local-6989586621679098633"><span class="hs-identifier hs-var">m</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; Stream a m r -&gt; m b
+</span><a href="#local-6989586621679098619"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679098628"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="annot"><span class="annottext">(Stream a m r -&gt; m b) -&gt; m (Stream a m r) -&gt; m b
+forall (m :: * -&gt; *) a b. Monad m =&gt; (a -&gt; m b) -&gt; m a -&gt; m b
+</span><span class="hs-operator hs-var">=&lt;&lt;</span></span><span> </span><span class="annot"><span class="annottext">m (Stream a m r)
+</span><a href="#local-6989586621679098633"><span class="hs-identifier hs-var">m</span></a></span><span>
+</span><span id="line-122"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span id="local-6989586621679098634"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098634"><span class="hs-identifier hs-var">r</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; m b
+forall a. a -&gt; m a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(b -&gt; m b) -&gt; b -&gt; m b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$!</span></span><span> </span><span class="annot"><span class="annottext">b -&gt; r -&gt; b
+</span><a href="#local-6989586621679098618"><span class="hs-identifier hs-var">g</span></a></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679098628"><span class="hs-identifier hs-var">z</span></a></span><span> </span><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098634"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-123"></span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span class="annot"><span class="hs-comment">-- | Decoder type for streams.</span></span><span>
+</span><span id="line-127"></span><span class="hs-keyword">newtype</span><span> </span><span id="Source"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Source"><span class="hs-identifier hs-var">Source</span></a></span></span><span> </span><span id="local-6989586621679098486"><span class="annot"><a href="#local-6989586621679098486"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span id="local-6989586621679098487"><span class="annot"><a href="#local-6989586621679098487"><span class="hs-identifier hs-type">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-128"></span><span>          </span><span id="Source"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Source"><span class="hs-identifier hs-var">Source</span></a></span></span><span>
+</span><span id="line-129"></span><span>            </span><span class="hs-special">{</span><span> </span><span id="runSource"><span class="annot"><span class="annottext">forall a r.
+Source a r
+-&gt; Path -&gt; Bitmask -&gt; K -&gt; Stream a (Parser (Path, Error)) r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#runSource"><span class="hs-identifier hs-var hs-var">runSource</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Bitmask"><span class="hs-identifier hs-type">Bitmask</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#K"><span class="hs-identifier hs-type">K</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098486"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098487"><span class="hs-identifier hs-type">r</span></a></span><span> </span><span class="hs-special">}</span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679098494"><span id="local-6989586621679098640"><span class="annot"><span class="hs-identifier hs-type">Functor</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Source"><span class="hs-identifier hs-type">Source</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098494"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-132"></span><span>  </span><span id="local-6989586621679098645"><span class="annot"><span class="annottext">fmap :: forall a b. (a -&gt; b) -&gt; Source a a -&gt; Source a b
+</span><span class="hs-identifier hs-var hs-var hs-var">fmap</span></span></span><span> </span><span id="local-6989586621679098646"><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679098646"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Source"><span class="hs-identifier hs-type">Source</span></a></span><span> </span><span id="local-6989586621679098647"><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Stream a (Parser (Path, Error)) a
+</span><a href="#local-6989586621679098647"><span class="hs-identifier hs-var">source</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-133"></span><span>    </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Stream a (Parser (Path, Error)) b)
+-&gt; Source a b
+forall a r.
+(Path -&gt; Bitmask -&gt; K -&gt; Stream a (Parser (Path, Error)) r)
+-&gt; Source a r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Source"><span class="hs-identifier hs-var">Source</span></a></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Stream a (Parser (Path, Error)) b)
+ -&gt; Source a b)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Stream a (Parser (Path, Error)) b)
+-&gt; Source a b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679098648"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098648"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679098649"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098649"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679098650"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098650"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-134"></span><span>      </span><span class="annot"><span class="annottext">(a -&gt; b)
+-&gt; Stream a (Parser (Path, Error)) a
+-&gt; Stream a (Parser (Path, Error)) b
+forall a b.
+(a -&gt; b)
+-&gt; Stream a (Parser (Path, Error)) a
+-&gt; Stream a (Parser (Path, Error)) b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+</span><a href="#local-6989586621679098646"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">(Stream a (Parser (Path, Error)) a
+ -&gt; Stream a (Parser (Path, Error)) b)
+-&gt; Stream a (Parser (Path, Error)) a
+-&gt; Stream a (Parser (Path, Error)) b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Stream a (Parser (Path, Error)) a
+</span><a href="#local-6989586621679098647"><span class="hs-identifier hs-var">source</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098648"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679098649"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098650"><span class="hs-identifier hs-var">k</span></a></span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span id="local-6989586621679098497"><span id="local-6989586621679098499"><span id="local-6989586621679098500"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#sourceObjectP"><span class="hs-identifier hs-type">sourceObjectP</span></a></span><span>
+</span><span id="line-139"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span>
+</span><span id="line-140"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#KeyDecoder"><span class="hs-identifier hs-type">KeyDecoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098497"><span class="hs-identifier hs-type">k</span></a></span><span>
+</span><span id="line-141"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098497"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098499"><span class="hs-identifier hs-type">r</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Source"><span class="hs-identifier hs-type">Source</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098500"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098499"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-142"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098499"><span class="hs-identifier hs-type">r</span></a></span><span>
+</span><span id="line-143"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098500"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098499"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span></span></span></span><span>
+</span><span id="line-144"></span><span id="sourceObjectP"><span class="annot"><span class="annottext">sourceObjectP :: forall k r a.
+Path
+-&gt; KeyDecoder k
+-&gt; (k -&gt; r -&gt; Source a r)
+-&gt; r
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#sourceObjectP"><span class="hs-identifier hs-var hs-var">sourceObjectP</span></a></span></span><span> </span><span id="local-6989586621679098655"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098655"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#KeyDecoder"><span class="hs-identifier hs-type">KeyDecoder</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span id="local-6989586621679098658"><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) k
+</span><a href="#local-6989586621679098658"><span class="hs-identifier hs-var">keyP</span></a></span></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span id="local-6989586621679098659"><span class="annot"><span class="annottext">k -&gt; r -&gt; Source a r
+</span><a href="#local-6989586621679098659"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679098660"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098660"><span class="hs-identifier hs-var">r0</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-145"></span><span>  </span><span class="annot"><span class="annottext">Parser (Path, Error) ()
+forall never. Parser never ()
+</span><span class="hs-identifier hs-var">skipEndOr1</span></span><span>
+</span><span id="line-146"></span><span>  </span><span id="local-6989586621679098662"><span class="annot"><a href="#local-6989586621679098662"><span class="hs-identifier hs-var">nonempty</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) Bool
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#firstKeyP"><span class="hs-identifier hs-var">firstKeyP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098655"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-147"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679098662"><span class="hs-identifier hs-type">nonempty</span></a></span><span>
+</span><span id="line-148"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><a href="#local-6989586621679098664"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098660"><span class="hs-identifier hs-type">r0</span></a></span><span>
+</span><span id="line-149"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098660"><span class="hs-identifier hs-type">r0</span></a></span><span>
+</span><span id="line-150"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-151"></span><span>        </span><span id="local-6989586621679098664"><span class="annot"><span class="annottext">go :: r -&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="#local-6989586621679098664"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679098672"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098672"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-152"></span><span>          </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) ()
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#nextKeyP"><span class="hs-identifier hs-var">nextKeyP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098655"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-153"></span><span>          </span><span class="hs-special">(</span><span id="local-6989586621679098674"><span class="annot"><a href="#local-6989586621679098674"><span class="hs-identifier hs-var">raw</span></a></span></span><span class="hs-special">,</span><span> </span><span id="local-6989586621679098675"><span class="annot"><a href="#local-6989586621679098675"><span class="hs-identifier hs-var">key</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) k -&gt; Parser (Path, Error) (ByteString, k)
+forall e a. Parser e a -&gt; Parser e (ByteString, a)
+</span><span class="hs-identifier hs-var">match</span></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) k -&gt; Parser (Path, Error) (ByteString, k))
+-&gt; Parser (Path, Error) k -&gt; Parser (Path, Error) (ByteString, k)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) k
+</span><a href="#local-6989586621679098658"><span class="hs-identifier hs-var">keyP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098655"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="Codec.JSON.Decoder.Internal.html#EmptyBitmask"><span class="hs-identifier hs-var">EmptyBitmask</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="Codec.JSON.Decoder.Internal.html#S"><span class="hs-identifier hs-var">S</span></a></span><span>
+</span><span id="line-154"></span><span>          </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextColonP"><span class="hs-identifier hs-type">nextColonP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098655"><span class="hs-identifier hs-type">path</span></a></span><span>
+</span><span id="line-155"></span><span>          </span><span id="local-6989586621679098680"><span class="annot"><a href="#local-6989586621679098680"><span class="hs-identifier hs-var">k'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextValueP"><span class="hs-identifier hs-type">nextValueP</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098655"><span class="hs-identifier hs-type">path</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-type">JSONKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098674"><span class="hs-identifier hs-type">raw</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-156"></span><span>          </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span>
+</span><span id="line-157"></span><span>            </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#chainStream"><span class="hs-identifier hs-type">chainStream</span></a></span><span>
+</span><span id="line-158"></span><span>              </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#runSource"><span class="hs-identifier hs-var">runSource</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098659"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098675"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098672"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098655"><span class="hs-identifier hs-type">path</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-type">JSONKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098674"><span class="hs-identifier hs-type">raw</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#EmptyBitmask"><span class="hs-identifier hs-type">EmptyBitmask</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098680"><span class="hs-identifier hs-type">k'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-159"></span><span>              </span><span class="hs-special">(</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679098685"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098685"><span class="hs-identifier hs-var">r'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-160"></span><span>                  </span><span class="annot"><span class="annottext">Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+-&gt; Stream a (Parser (Path, Error)) r
+forall a (m :: * -&gt; *) r. m (Stream a m r) -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-var">Effect</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+ -&gt; Stream a (Parser (Path, Error)) r)
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+-&gt; Stream a (Parser (Path, Error)) r
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-161"></span><span>                    </span><span id="local-6989586621679098686"><span class="annot"><a href="#local-6989586621679098686"><span class="hs-identifier hs-var">more</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) Bool
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#nextPairP"><span class="hs-identifier hs-var">nextPairP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098655"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-162"></span><span>                    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679098686"><span class="hs-identifier hs-type">more</span></a></span><span>
+</span><span id="line-163"></span><span>                      </span><span class="hs-keyword">then</span><span> </span><span class="annot"><a href="#local-6989586621679098664"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098685"><span class="hs-identifier hs-type">r'</span></a></span><span>
+</span><span id="line-164"></span><span>                      </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098685"><span class="hs-identifier hs-type">r'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-165"></span><span>              </span><span class="hs-special">)</span><span>
+</span><span id="line-166"></span><span>
+</span><span id="line-167"></span><span>
+</span><span id="line-168"></span><span>
+</span><span id="line-169"></span><span id="local-6989586621679098512"><span id="local-6989586621679098513"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#sourceObjectP_"><span class="hs-identifier hs-type">sourceObjectP_</span></a></span><span>
+</span><span id="line-170"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span>
+</span><span id="line-171"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-type">JSONKey</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098512"><span class="hs-identifier hs-type">r</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Source"><span class="hs-identifier hs-type">Source</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098513"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098512"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-172"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098512"><span class="hs-identifier hs-type">r</span></a></span><span>
+</span><span id="line-173"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098513"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098512"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-174"></span><span id="sourceObjectP_"><span class="annot"><span class="annottext">sourceObjectP_ :: forall r a.
+Path
+-&gt; (JSONKey -&gt; r -&gt; Source a r)
+-&gt; r
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#sourceObjectP_"><span class="hs-identifier hs-var hs-var">sourceObjectP_</span></a></span></span><span> </span><span id="local-6989586621679098691"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098691"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679098692"><span class="annot"><span class="annottext">JSONKey -&gt; r -&gt; Source a r
+</span><a href="#local-6989586621679098692"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679098693"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098693"><span class="hs-identifier hs-var">r0</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-175"></span><span>  </span><span class="annot"><span class="annottext">Parser (Path, Error) ()
+forall never. Parser never ()
+</span><span class="hs-identifier hs-var">skipEndOr1</span></span><span>
+</span><span id="line-176"></span><span>  </span><span id="local-6989586621679098694"><span class="annot"><a href="#local-6989586621679098694"><span class="hs-identifier hs-var">nonempty</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) Bool
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#firstKeyP"><span class="hs-identifier hs-var">firstKeyP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098691"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-177"></span><span>  </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679098694"><span class="hs-identifier hs-type">nonempty</span></a></span><span>
+</span><span id="line-178"></span><span>    </span><span class="hs-keyword">then</span><span> </span><span class="annot"><a href="#local-6989586621679098695"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098693"><span class="hs-identifier hs-type">r0</span></a></span><span>
+</span><span id="line-179"></span><span>    </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098693"><span class="hs-identifier hs-type">r0</span></a></span><span>
+</span><span id="line-180"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-181"></span><span>        </span><span id="local-6989586621679098695"><span class="annot"><span class="annottext">go :: r -&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="#local-6989586621679098695"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679098704"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098704"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-182"></span><span>          </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) ()
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#nextKeyP"><span class="hs-identifier hs-var">nextKeyP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098691"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-183"></span><span>          </span><span class="hs-special">(</span><span id="local-6989586621679098705"><span class="annot"><a href="#local-6989586621679098705"><span class="hs-identifier hs-var">raw</span></a></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">_</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) () -&gt; Parser (Path, Error) (ByteString, ())
+forall e a. Parser e a -&gt; Parser e (ByteString, a)
+</span><span class="hs-identifier hs-var">match</span></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) () -&gt; Parser (Path, Error) (ByteString, ()))
+-&gt; Parser (Path, Error) () -&gt; Parser (Path, Error) (ByteString, ())
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling_ -&gt; Path -&gt; Parser (Path, Error) ()
+</span><a href="Codec.JSON.Decoder.JSON.Internal.html#jsonStringP"><span class="hs-identifier hs-var">jsonStringP</span></a></span><span> </span><span class="annot"><span class="annottext">SurrogateHandling_
+</span><a href="Codec.JSON.Decoder.String.Internal.html#Complain_"><span class="hs-identifier hs-var">Complain_</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098691"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-184"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679098708"><span class="annot"><a href="#local-6989586621679098708"><span class="hs-identifier hs-var hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">JSON -&gt; JSONKey
+</span><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-var">JSONKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ByteString -&gt; JSON
+</span><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-var">JSON</span></a></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679098705"><span class="hs-identifier hs-var">raw</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-185"></span><span>          </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextColonP"><span class="hs-identifier hs-type">nextColonP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098691"><span class="hs-identifier hs-type">path</span></a></span><span>
+</span><span id="line-186"></span><span>          </span><span id="local-6989586621679098709"><span class="annot"><a href="#local-6989586621679098709"><span class="hs-identifier hs-var">k'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextValueP"><span class="hs-identifier hs-type">nextValueP</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098691"><span class="hs-identifier hs-type">path</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSONKey"><span class="hs-identifier hs-type">JSONKey</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098705"><span class="hs-identifier hs-type">raw</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-187"></span><span>          </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span>
+</span><span id="line-188"></span><span>            </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#chainStream"><span class="hs-identifier hs-type">chainStream</span></a></span><span>
+</span><span id="line-189"></span><span>              </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#runSource"><span class="hs-identifier hs-var">runSource</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098692"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098708"><span class="hs-identifier hs-type">key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098704"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Key"><span class="hs-identifier hs-type">Key</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098691"><span class="hs-identifier hs-type">path</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098708"><span class="hs-identifier hs-type">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#EmptyBitmask"><span class="hs-identifier hs-type">EmptyBitmask</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098709"><span class="hs-identifier hs-type">k'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-190"></span><span>              </span><span class="hs-special">(</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679098710"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098710"><span class="hs-identifier hs-var">r'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-191"></span><span>                  </span><span class="annot"><span class="annottext">Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+-&gt; Stream a (Parser (Path, Error)) r
+forall a (m :: * -&gt; *) r. m (Stream a m r) -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-var">Effect</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+ -&gt; Stream a (Parser (Path, Error)) r)
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+-&gt; Stream a (Parser (Path, Error)) r
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-192"></span><span>                    </span><span id="local-6989586621679098711"><span class="annot"><a href="#local-6989586621679098711"><span class="hs-identifier hs-var">more</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) Bool
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#nextPairP"><span class="hs-identifier hs-var">nextPairP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098691"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-193"></span><span>                    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679098711"><span class="hs-identifier hs-type">more</span></a></span><span>
+</span><span id="line-194"></span><span>                      </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-195"></span><span>                        </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextKeyP"><span class="hs-identifier hs-type">nextKeyP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098691"><span class="hs-identifier hs-type">path</span></a></span><span>
+</span><span id="line-196"></span><span>                        </span><span class="annot"><a href="#local-6989586621679098695"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098710"><span class="hs-identifier hs-type">r'</span></a></span><span>
+</span><span id="line-197"></span><span>
+</span><span id="line-198"></span><span>                      </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098710"><span class="hs-identifier hs-type">r'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-199"></span><span>              </span><span class="hs-special">)</span><span>
+</span><span id="line-200"></span><span>
+</span><span id="line-201"></span><span>
+</span><span id="line-202"></span><span>
+</span><span id="line-203"></span><span id="local-6989586621679098517"><span id="local-6989586621679098518"><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#sourceArrayP"><span class="hs-identifier hs-type">sourceArrayP</span></a></span><span>
+</span><span id="line-204"></span><span>  </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span>
+</span><span id="line-205"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Word</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098517"><span class="hs-identifier hs-type">r</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Source"><span class="hs-identifier hs-type">Source</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098518"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098517"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-206"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679098517"><span class="hs-identifier hs-type">r</span></a></span><span>
+</span><span id="line-207"></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Stream"><span class="hs-identifier hs-type">Stream</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098518"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Parser</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098517"><span class="hs-identifier hs-type">r</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-208"></span><span id="sourceArrayP"><span class="annot"><span class="annottext">sourceArrayP :: forall r a.
+Path
+-&gt; (Word -&gt; r -&gt; Source a r)
+-&gt; r
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#sourceArrayP"><span class="hs-identifier hs-var hs-var">sourceArrayP</span></a></span></span><span> </span><span id="local-6989586621679098715"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098715"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679098716"><span class="annot"><span class="annottext">Word -&gt; r -&gt; Source a r
+</span><a href="#local-6989586621679098716"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679098717"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098717"><span class="hs-identifier hs-var">r0</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-209"></span><span>  </span><span class="annot"><span class="annottext">Parser (Path, Error) ()
+forall never. Parser never ()
+</span><span class="hs-identifier hs-var">skipEndOr1</span></span><span>
+</span><span id="line-210"></span><span>  </span><span id="local-6989586621679098718"><span class="annot"><a href="#local-6989586621679098718"><span class="hs-identifier hs-var">mayK1</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) (Maybe K)
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#firstElementP"><span class="hs-identifier hs-var">firstElementP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098715"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-211"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679098718"><span class="hs-identifier hs-type">mayK1</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-212"></span><span>    </span><span class="annot"><span class="annottext">Maybe K
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Stream a (Parser (Path, Error)) r
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Stream a (Parser (Path, Error)) r
+ -&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r))
+-&gt; Stream a (Parser (Path, Error)) r
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">r -&gt; Stream a (Parser (Path, Error)) r
+forall a (m :: * -&gt; *) r. r -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-var">Return</span></a></span><span> </span><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098717"><span class="hs-identifier hs-var">r0</span></a></span><span>
+</span><span id="line-213"></span><span>    </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679098720"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098720"><span class="hs-identifier hs-var">k1</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Word
+-&gt; K
+-&gt; r
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="#local-6989586621679098721"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">Word
+</span><span class="hs-number">0</span></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098720"><span class="hs-identifier hs-var">k1</span></a></span><span> </span><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098717"><span class="hs-identifier hs-var">r0</span></a></span><span>
+</span><span id="line-214"></span><span>      </span><span class="hs-keyword">where</span><span>
+</span><span id="line-215"></span><span>        </span><span id="local-6989586621679098721"><span class="annot"><span class="annottext">go :: Word
+-&gt; K
+-&gt; r
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+</span><a href="#local-6989586621679098721"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679098729"><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679098729"><span class="hs-identifier hs-var">n</span></a></span></span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679098730"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098730"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span id="local-6989586621679098731"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098731"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-216"></span><span>          </span><span class="annot"><span class="annottext">Stream a (Parser (Path, Error)) r
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">(Stream a (Parser (Path, Error)) r
+ -&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r))
+-&gt; Stream a (Parser (Path, Error)) r
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>
+</span><span id="line-217"></span><span>            </span><span class="annot"><span class="annottext">Stream a (Parser (Path, Error)) r
+-&gt; (r -&gt; Stream a (Parser (Path, Error)) r)
+-&gt; Stream a (Parser (Path, Error)) r
+forall a e r o.
+Stream a (Parser e) r
+-&gt; (r -&gt; Stream a (Parser e) o) -&gt; Stream a (Parser e) o
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#chainStream"><span class="hs-identifier hs-var">chainStream</span></a></span><span>
+</span><span id="line-218"></span><span>              </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Source a r
+-&gt; Path -&gt; Bitmask -&gt; K -&gt; Stream a (Parser (Path, Error)) r
+forall a r.
+Source a r
+-&gt; Path -&gt; Bitmask -&gt; K -&gt; Stream a (Parser (Path, Error)) r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#runSource"><span class="hs-identifier hs-var">runSource</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Word -&gt; r -&gt; Source a r
+</span><a href="#local-6989586621679098716"><span class="hs-identifier hs-var">f</span></a></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679098729"><span class="hs-identifier hs-var">n</span></a></span><span> </span><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098731"><span class="hs-identifier hs-var">r</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path -&gt; Word -&gt; Path
+</span><a href="Codec.JSON.Decoder.Internal.html#Index"><span class="hs-identifier hs-var">Index</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098715"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">Word
+</span><a href="#local-6989586621679098729"><span class="hs-identifier hs-var">n</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="Codec.JSON.Decoder.Internal.html#EmptyBitmask"><span class="hs-identifier hs-var">EmptyBitmask</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679098730"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-219"></span><span>              </span><span class="hs-special">(</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679098733"><span class="annot"><span class="annottext">r
+</span><a href="#local-6989586621679098733"><span class="hs-identifier hs-var">r'</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-220"></span><span>                  </span><span class="annot"><span class="annottext">Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+-&gt; Stream a (Parser (Path, Error)) r
+forall a (m :: * -&gt; *) r. m (Stream a m r) -&gt; Stream a m r
+</span><a href="Codec.JSON.Decoder.Stream.Internal.html#Effect"><span class="hs-identifier hs-var">Effect</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+ -&gt; Stream a (Parser (Path, Error)) r)
+-&gt; Parser (Path, Error) (Stream a (Parser (Path, Error)) r)
+-&gt; Stream a (Parser (Path, Error)) r
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-221"></span><span>                    </span><span id="local-6989586621679098734"><span class="annot"><a href="#local-6989586621679098734"><span class="hs-identifier hs-var">more</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) Bool
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#nextElementP"><span class="hs-identifier hs-var">nextElementP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679098715"><span class="hs-identifier hs-var">path</span></a></span><span>
+</span><span id="line-222"></span><span>                    </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679098734"><span class="hs-identifier hs-type">more</span></a></span><span>
+</span><span id="line-223"></span><span>                      </span><span class="hs-keyword">then</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-224"></span><span>                        </span><span id="local-6989586621679098736"><span class="annot"><a href="#local-6989586621679098736"><span class="hs-identifier hs-var">k'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#nextValueP"><span class="hs-identifier hs-type">nextValueP</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098715"><span class="hs-identifier hs-type">path</span></a></span><span>
+</span><span id="line-225"></span><span>                        </span><span class="annot"><a href="#local-6989586621679098721"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679098729"><span class="hs-identifier hs-type">n</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">+</span></span><span> </span><span class="annot"><span class="hs-number">1</span></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679098736"><span class="hs-identifier hs-type">k'</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098733"><span class="hs-identifier hs-type">r'</span></a></span><span>
+</span><span id="line-226"></span><span>
+</span><span id="line-227"></span><span>                      </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Stream.Internal.html#Return"><span class="hs-identifier hs-type">Return</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679098733"><span class="hs-identifier hs-type">r'</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-228"></span><span>              </span><span class="hs-special">)</span><span>
+</span><span id="line-229"></span></pre></body></html>

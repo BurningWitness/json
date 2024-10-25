@@ -1,0 +1,260 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="annot"><span class="hs-comment">{-| Pure incremental RFC 8259 JSON decoder.
+
+    == Correctness
+
+    All functions that parse or validate JSON object pair names treat surrogate Unicode
+    code points as invalid input.
+
+    == Laziness
+
+    Decoder functions that return concrete types in this library fully evaluate
+    their results before returning unless their documentation specifies otherwise.
+ -}</span></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.html"><span class="hs-identifier">Codec.JSON.Decoder</span></a></span><span>
+</span><span id="line-17"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="hs-comment">-- * Itself</span></span><span>
+</span><span id="line-18"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier">Decoder</span></a></span><span>
+</span><span id="line-19"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.html#mapEither"><span class="hs-identifier">mapEither</span></a></span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Run</span></span><span>
+</span><span id="line-22"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">ByteOffset</span></span><span>
+</span><span id="line-23"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">More</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Scrap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier">Path</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier">Error</span></a></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.html#decode"><span class="hs-identifier">decode</span></a></span><span>
+</span><span id="line-30"></span><span>
+</span><span id="line-31"></span><span>    </span><span class="annot"><span class="hs-comment">-- * Decode</span></span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Object</span></span><span>
+</span><span id="line-34"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Pair"><span class="hs-identifier">Pair</span></a></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.html#.%3A"><span class="hs-operator">(.:)</span></a></span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.html#%3F%3A"><span class="hs-operator">(?:)</span></a></span><span>
+</span><span id="line-37"></span><span>
+</span><span id="line-38"></span><span>    </span><span class="annot"><span class="hs-comment">-- *** Applicative</span></span><span>
+</span><span id="line-39"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.html#PairsA"><span class="hs-identifier">PairsA</span></a></span><span>
+</span><span id="line-40"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.html#pairsA"><span class="hs-identifier">pairsA</span></a></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span>    </span><span class="annot"><span class="hs-comment">-- *** Monad</span></span><span>
+</span><span id="line-43"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.html#PairsM"><span class="hs-identifier">PairsM</span></a></span><span>
+</span><span id="line-44"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.html#pairsM"><span class="hs-identifier">pairsM</span></a></span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Array</span></span><span>
+</span><span id="line-47"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Array.html#list"><span class="hs-identifier">list</span></a></span><span>
+</span><span id="line-48"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Element"><span class="hs-identifier">Element</span></a></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span>    </span><span class="annot"><span class="hs-comment">-- *** Applicative</span></span><span>
+</span><span id="line-51"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Array.html#ElementsA"><span class="hs-identifier">ElementsA</span></a></span><span>
+</span><span id="line-52"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Array.html#elementsA"><span class="hs-identifier">elementsA</span></a></span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Number</span></span><span>
+</span><span id="line-55"></span><span>    </span><span class="annot"><span class="hs-comment">-- | === Unsigned integral</span></span><span>
+</span><span id="line-56"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#word8"><span class="hs-identifier">Codec.JSON.Decoder.Number.word8</span></a></span><span>
+</span><span id="line-57"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#word16"><span class="hs-identifier">word16</span></a></span><span>
+</span><span id="line-58"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#word32"><span class="hs-identifier">word32</span></a></span><span>
+</span><span id="line-59"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#word64"><span class="hs-identifier">word64</span></a></span><span>
+</span><span id="line-60"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#word"><span class="hs-identifier">word</span></a></span><span>
+</span><span id="line-61"></span><span>
+</span><span id="line-62"></span><span>    </span><span class="annot"><span class="hs-comment">-- | === Signed integral</span></span><span>
+</span><span id="line-63"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#int8"><span class="hs-identifier">Codec.JSON.Decoder.Number.int8</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#int16"><span class="hs-identifier">int16</span></a></span><span>
+</span><span id="line-65"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#int32"><span class="hs-identifier">int32</span></a></span><span>
+</span><span id="line-66"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#int64"><span class="hs-identifier">int64</span></a></span><span>
+</span><span id="line-67"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#int"><span class="hs-identifier">int</span></a></span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span>    </span><span class="hs-comment">-- | === Floating-point</span><span>
+</span><span id="line-70"></span><span>    </span><span class="hs-comment">--</span><span>
+</span><span id="line-71"></span><span>    </span><span class="hs-comment">--   Note that JSON numbers cannot represent @NaN@, \(+\infty\) and \(-\infty\).</span><span>
+</span><span id="line-72"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#float"><span class="hs-identifier">float</span></a></span><span>
+</span><span id="line-73"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html#double"><span class="hs-identifier">double</span></a></span><span>
+</span><span id="line-74"></span><span>
+</span><span id="line-75"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** String</span></span><span>
+</span><span id="line-76"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#string"><span class="hs-identifier">string</span></a></span><span>
+</span><span id="line-77"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#text"><span class="hs-identifier">text</span></a></span><span>
+</span><span id="line-78"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#lazyText"><span class="hs-identifier">lazyText</span></a></span><span>
+</span><span id="line-79"></span><span>
+</span><span id="line-80"></span><span>    </span><span class="annot"><span class="hs-comment">-- | === Eager-failure variants</span></span><span>
+</span><span id="line-81"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#string%27"><span class="hs-identifier">string'</span></a></span><span>
+</span><span id="line-82"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#text%27"><span class="hs-identifier">text'</span></a></span><span>
+</span><span id="line-83"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.String.html#lazyText%27"><span class="hs-identifier">lazyText'</span></a></span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Boolean</span></span><span>
+</span><span id="line-86"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Literals.html#bool"><span class="hs-identifier">bool</span></a></span><span>
+</span><span id="line-87"></span><span>
+</span><span id="line-88"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Null</span></span><span>
+</span><span id="line-89"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Literals.html#null"><span class="hs-identifier">Codec.JSON.Decoder.Literals.null</span></a></span><span>
+</span><span id="line-90"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Literals.html#maybe"><span class="hs-identifier">Codec.JSON.Decoder.Literals.maybe</span></a></span><span>
+</span><span id="line-91"></span><span>
+</span><span id="line-92"></span><span>    </span><span class="annot"><span class="hs-comment">-- ** Raw</span></span><span>
+</span><span id="line-93"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier">JSON</span></a></span><span>
+</span><span id="line-94"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.html#copy"><span class="hs-identifier">copy</span></a></span><span>
+</span><span id="line-95"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#json"><span class="hs-identifier">json</span></a></span><span>
+</span><span id="line-96"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#jsonObject"><span class="hs-identifier">jsonObject</span></a></span><span>
+</span><span id="line-97"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#jsonArray"><span class="hs-identifier">jsonArray</span></a></span><span>
+</span><span id="line-98"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#jsonNumber"><span class="hs-identifier">jsonNumber</span></a></span><span>
+</span><span id="line-99"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#jsonString"><span class="hs-identifier">jsonString</span></a></span><span>
+</span><span id="line-100"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#jsonBoolean"><span class="hs-identifier">jsonBoolean</span></a></span><span>
+</span><span id="line-101"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#jsonNull"><span class="hs-identifier">jsonNull</span></a></span><span>
+</span><span id="line-102"></span><span>
+</span><span id="line-103"></span><span>    </span><span class="annot"><span class="hs-comment">-- | === Strict Unicode conformance variants</span></span><span>
+</span><span id="line-104"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#json%27"><span class="hs-identifier">json'</span></a></span><span>
+</span><span id="line-105"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#jsonObject%27"><span class="hs-identifier">jsonObject'</span></a></span><span>
+</span><span id="line-106"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#jsonArray%27"><span class="hs-identifier">jsonArray'</span></a></span><span>
+</span><span id="line-107"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html#jsonString%27"><span class="hs-identifier">jsonString'</span></a></span><span>
+</span><span id="line-108"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Array.html"><span class="hs-identifier">Codec.JSON.Decoder.Array</span></a></span><span>
+</span><span id="line-111"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Composite.Internal</span></a></span><span>
+</span><span id="line-112"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.JSON.html"><span class="hs-identifier">Codec.JSON.Decoder.JSON</span></a></span><span>
+</span><span id="line-113"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Internal</span></a></span><span>
+</span><span id="line-114"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Literals.html"><span class="hs-identifier">Codec.JSON.Decoder.Literals</span></a></span><span>
+</span><span id="line-115"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Number.html"><span class="hs-identifier">Codec.JSON.Decoder.Number</span></a></span><span>
+</span><span id="line-116"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Object.html"><span class="hs-identifier">Codec.JSON.Decoder.Object</span></a></span><span>
+</span><span id="line-117"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.String.html"><span class="hs-identifier">Codec.JSON.Decoder.String</span></a></span><span>
+</span><span id="line-118"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Data.JSON.Internal.html"><span class="hs-identifier">Data.JSON.Internal</span></a></span><span>
+</span><span id="line-119"></span><span>
+</span><span id="line-120"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">LB</span></span><span>
+</span><span id="line-121"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Coerce</span></span><span>
+</span><span id="line-122"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-123"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe</span></span><span>
+</span><span id="line-124"></span><span>
+</span><span id="line-125"></span><span>
+</span><span id="line-126"></span><span>
+</span><span id="line-127"></span><span class="annot"><span class="hs-comment">-- | Transform a parsed value or fail in place.</span></span><span>
+</span><span id="line-128"></span><span id="local-6989586621679100567"><span id="local-6989586621679100568"><span class="annot"><a href="Codec.JSON.Decoder.html#mapEither"><span class="hs-identifier hs-type">mapEither</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679100567"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><a href="#local-6989586621679100568"><span class="hs-identifier hs-type">b</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100567"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100568"><span class="hs-identifier hs-type">b</span></a></span></span></span><span>
+</span><span id="line-129"></span><span id="mapEither"><span class="annot"><span class="annottext">mapEither :: forall a b. (a -&gt; Either String b) -&gt; Decoder a -&gt; Decoder b
+</span><a href="Codec.JSON.Decoder.html#mapEither"><span class="hs-identifier hs-var hs-var">mapEither</span></a></span></span><span> </span><span id="local-6989586621679100671"><span class="annot"><span class="annottext">a -&gt; Either String b
+</span><a href="#local-6989586621679100671"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span id="local-6989586621679100673"><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a
+</span><a href="#local-6989586621679100673"><span class="hs-identifier hs-var">d</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-130"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) b) -&gt; Decoder b
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-var">Decoder</span></a></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) b) -&gt; Decoder b)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) b) -&gt; Decoder b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679100674"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679100674"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679100675"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679100675"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679100676"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679100676"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-131"></span><span>    </span><span id="local-6989586621679100677"><span class="annot"><a href="#local-6989586621679100677"><span class="hs-identifier hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a
+</span><a href="#local-6989586621679100673"><span class="hs-identifier hs-var">d</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679100674"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679100675"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679100676"><span class="hs-identifier hs-var">k</span></a></span><span>
+</span><span id="line-132"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><a href="#local-6989586621679100671"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100677"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-133"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679100678"><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679100678"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; Parser (Path, Error) b
+forall a. a -&gt; Parser (Path, Error) a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">b
+</span><a href="#local-6989586621679100678"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-134"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679100679"><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679100679"><span class="hs-identifier hs-var">e</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) b
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679100674"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-var">Malformed</span></a></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><a href="Codec.JSON.Decoder.Internal.html#Benign"><span class="hs-identifier hs-var">Benign</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679100679"><span class="hs-identifier hs-var">e</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-135"></span><span>
+</span><span id="line-136"></span><span>
+</span><span id="line-137"></span><span>
+</span><span id="line-138"></span><span class="annot"><a href="Codec.JSON.Decoder.html#badTrail"><span class="hs-identifier hs-type">badTrail</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-139"></span><span id="badTrail"><span class="annot"><span class="annottext">badTrail :: String
+</span><a href="Codec.JSON.Decoder.html#badTrail"><span class="hs-identifier hs-var hs-var">badTrail</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Unexpected trailing data&quot;</span></span><span>
+</span><span id="line-140"></span><span>
+</span><span id="line-141"></span><span>
+</span><span id="line-142"></span><span>
+</span><span id="line-143"></span><span class="hs-comment">-- | Run a decoder by providing all the input immediately.</span><span>
+</span><span id="line-144"></span><span class="hs-comment">--</span><span>
+</span><span id="line-145"></span><span class="hs-comment">--   Fails if there is any trailing data remaining after parsing.</span><span>
+</span><span id="line-146"></span><span id="local-6989586621679100589"><span class="annot"><a href="Codec.JSON.Decoder.html#decode"><span class="hs-identifier hs-type">decode</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100589"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">LB.ByteString</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Scrap</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Path"><span class="hs-identifier hs-type">Path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Error"><span class="hs-identifier hs-type">Error</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679100589"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-147"></span><span id="decode"><span class="annot"><span class="annottext">decode :: forall a.
+Decoder a -&gt; ByteString -&gt; (Scrap, Either (Path, Error) a)
+</span><a href="Codec.JSON.Decoder.html#decode"><span class="hs-identifier hs-var hs-var">decode</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span id="local-6989586621679100686"><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a
+</span><a href="#local-6989586621679100686"><span class="hs-identifier hs-var">parser</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-148"></span><span>  </span><span class="annot"><span class="annottext">Parser (Path, Error) a
+-&gt; ByteString -&gt; (Scrap, Either (Path, Error) a)
+forall e a. Parser e a -&gt; ByteString -&gt; (Scrap, Either e a)
+</span><span class="hs-identifier hs-var">parse</span></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) a
+ -&gt; ByteString -&gt; (Scrap, Either (Path, Error) a))
+-&gt; Parser (Path, Error) a
+-&gt; ByteString
+-&gt; (Scrap, Either (Path, Error) a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-149"></span><span>    </span><span id="local-6989586621679100688"><span class="annot"><a href="#local-6989586621679100688"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; Parser (Path, Error) K
+</span><a href="Codec.JSON.Decoder.Composite.Internal.html#nextValueP"><span class="hs-identifier hs-var">nextValueP</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="Codec.JSON.Decoder.Internal.html#Root"><span class="hs-identifier hs-var">Root</span></a></span><span>
+</span><span id="line-150"></span><span>    </span><span class="annot"><a href="#local-6989586621679100686"><span class="hs-identifier hs-type">parser</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Root"><span class="hs-identifier hs-type">Root</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#EmptyBitmask"><span class="hs-identifier hs-type">EmptyBitmask</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100688"><span class="hs-identifier hs-type">k</span></a></span><span> </span><span class="annot"><span class="hs-operator hs-type">&lt;*</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Composite.Internal.html#endOfInputP"><span class="hs-identifier hs-type">endOfInputP</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Root"><span class="hs-identifier hs-type">Root</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-type">Malformed</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Fatal"><span class="hs-identifier hs-type">Fatal</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.html#badTrail"><span class="hs-identifier hs-type">badTrail</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-151"></span><span>
+</span><span id="line-152"></span><span>
+</span><span id="line-153"></span><span>
+</span><span id="line-154"></span><span class="hs-comment">-- | Decode a JSON value at the given key.</span><span>
+</span><span id="line-155"></span><span class="hs-comment">--</span><span>
+</span><span id="line-156"></span><span class="hs-comment">--   Fails if the key is not present in the JSON object.</span><span>
+</span><span id="line-157"></span><span id="local-6989586621679100598"><span id="local-6989586621679100601"><span class="annot"><a href="Codec.JSON.Decoder.html#.%3A"><span class="hs-operator hs-type">(.:)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Pair"><span class="hs-identifier hs-type">Pair</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100598"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100601"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679100598"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100601"><span class="hs-identifier hs-type">a</span></a></span></span></span><span>
+</span><span id="line-158"></span><span id=".%3A"><span class="annot"><span class="annottext">.: :: forall (f :: * -&gt; *) a. Pair f =&gt; Text -&gt; Decoder a -&gt; f a
+</span><a href="Codec.JSON.Decoder.html#.%3A"><span class="hs-operator hs-var hs-var">(.:)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Decoder a -&gt; f a
+forall a. Text -&gt; Decoder a -&gt; f a
+forall (f :: * -&gt; *) a. Pair f =&gt; Text -&gt; Decoder a -&gt; f a
+</span><a href="Codec.JSON.Decoder.Internal.html#pair"><span class="hs-identifier hs-var">pair</span></a></span><span>
+</span><span id="line-159"></span><span>
+</span><span id="line-160"></span><span class="hs-comment">-- | Decode an optional JSON value at the given key.</span><span>
+</span><span id="line-161"></span><span class="hs-comment">--</span><span>
+</span><span id="line-162"></span><span class="hs-comment">--   Returns 'Nothing' if the key is not present in the JSON object or</span><span>
+</span><span id="line-163"></span><span class="hs-comment">--   if the value is a JSON null.</span><span>
+</span><span id="line-164"></span><span id="local-6989586621679100606"><span id="local-6989586621679100607"><span class="annot"><a href="Codec.JSON.Decoder.html#%3F%3A"><span class="hs-operator hs-type">(?:)</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Pair"><span class="hs-identifier hs-type">Pair</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100606"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-glyph">=&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100607"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679100606"><span class="hs-identifier hs-type">f</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="#local-6989586621679100607"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-165"></span><span id="local-6989586621679100700"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679100700"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="%3F%3A"><span class="annot"><span class="annottext">?: :: forall (f :: * -&gt; *) a. Pair f =&gt; Text -&gt; Decoder a -&gt; f (Maybe a)
+</span><a href="Codec.JSON.Decoder.html#%3F%3A"><span class="hs-operator hs-var hs-var">?:</span></a></span></span><span> </span><span id="local-6989586621679100701"><span class="annot"><span class="annottext">Decoder a
+</span><a href="#local-6989586621679100701"><span class="hs-identifier hs-var">parser</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Decoder (Maybe a) -&gt; f (Maybe a)
+forall a. Text -&gt; Decoder (Maybe a) -&gt; f (Maybe a)
+forall (f :: * -&gt; *) a.
+Pair f =&gt;
+Text -&gt; Decoder (Maybe a) -&gt; f (Maybe a)
+</span><a href="Codec.JSON.Decoder.Internal.html#pairMaybe"><span class="hs-identifier hs-var">pairMaybe</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679100700"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Decoder a -&gt; Decoder (Maybe a)
+forall a. Decoder a -&gt; Decoder (Maybe a)
+</span><a href="Codec.JSON.Decoder.Literals.html#maybe"><span class="hs-identifier hs-var">Codec.JSON.Decoder.Literals.maybe</span></a></span><span> </span><span class="annot"><span class="annottext">Decoder a
+</span><a href="#local-6989586621679100701"><span class="hs-identifier hs-var">parser</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-166"></span><span>
+</span><span id="line-167"></span><span>
+</span><span id="line-168"></span><span>
+</span><span id="line-169"></span><span class="annot"><span class="hs-comment">-- | Get a copy of the underlying input alongside the decoding result.</span></span><span>
+</span><span id="line-170"></span><span id="local-6989586621679100612"><span class="annot"><a href="Codec.JSON.Decoder.html#copy"><span class="hs-identifier hs-type">copy</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679100612"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Data.JSON.Internal.html#JSON"><span class="hs-identifier hs-type">JSON</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><a href="#local-6989586621679100612"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-171"></span><span id="copy"><span class="annot"><span class="annottext">copy :: forall a. Decoder a -&gt; Decoder (JSON, a)
+</span><a href="Codec.JSON.Decoder.html#copy"><span class="hs-identifier hs-var hs-var">copy</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span id="local-6989586621679100704"><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a
+</span><a href="#local-6989586621679100704"><span class="hs-identifier hs-var">parser</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-172"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) (JSON, a))
+-&gt; Decoder (JSON, a)
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-var">Decoder</span></a></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) (JSON, a))
+ -&gt; Decoder (JSON, a))
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) (JSON, a))
+-&gt; Decoder (JSON, a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679100705"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679100705"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679100706"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679100706"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679100707"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679100707"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-173"></span><span>    </span><span class="annot"><span class="annottext">Parser (Path, Error) (ByteString, a)
+-&gt; Parser (Path, Error) (JSON, a)
+forall a b. Coercible a b =&gt; a -&gt; b
+</span><span class="hs-identifier hs-var">coerce</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Parser (Path, Error) a -&gt; Parser (Path, Error) (ByteString, a)
+forall e a. Parser e a -&gt; Parser e (ByteString, a)
+</span><span class="hs-identifier hs-var">match</span></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) a -&gt; Parser (Path, Error) (ByteString, a))
+-&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) (ByteString, a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a
+</span><a href="#local-6989586621679100704"><span class="hs-identifier hs-var">parser</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679100705"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679100706"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679100707"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-174"></span></pre></body></html>

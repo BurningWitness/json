@@ -1,0 +1,92 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns #-}</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="annot"><span class="hs-comment">{-| Functions for decoding RFC 9562 UUIDs in RFC 8259 JSONs.
+ -}</span></span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.UUID.html"><span class="hs-identifier">Codec.JSON.Decoder.UUID</span></a></span><span>
+</span><span id="line-7"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.UUID.html#uuid"><span class="hs-identifier">Codec.JSON.Decoder.UUID.uuid</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-9"></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.JSON.Decoder</span></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.JSON.Decoder.Unsafe</span></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Codec.JSON.Decoder.String.Internal</span></span><span>
+</span><span id="line-13"></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.UUID.Types</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">UUID</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Lathe</span></span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span>
+</span><span id="line-19"></span><span class="hs-comment">-- | Decode a JSON string as a 'UUID', in hexadecimal</span><span>
+</span><span id="line-20"></span><span class="hs-comment">--   @xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@ format (&quot;hex-and-dash&quot;). Case-insensitive.</span><span>
+</span><span id="line-21"></span><span class="annot"><a href="Codec.JSON.Decoder.UUID.html#uuid"><span class="hs-identifier hs-type">uuid</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Decoder</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">UUID</span></span><span>
+</span><span id="line-22"></span><span id="uuid"><span class="annot"><span class="annottext">uuid :: Decoder UUID
+</span><a href="Codec.JSON.Decoder.UUID.html#uuid"><span class="hs-identifier hs-var hs-var">uuid</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-23"></span><span>  </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) UUID) -&gt; Decoder UUID
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><span class="hs-identifier hs-var">Decoder</span></span><span> </span><span class="annot"><span class="annottext">((Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) UUID)
+ -&gt; Decoder UUID)
+-&gt; (Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) UUID)
+-&gt; Decoder UUID
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679043162"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679043162"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679043163"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679043163"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679043164"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679043164"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-24"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679043164"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-25"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier hs-var">S</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Int
+-&gt; Path -&gt; Parser (Path, Error) UUID -&gt; Parser (Path, Error) UUID
+forall a.
+Int -&gt; Path -&gt; Parser (Path, Error) a -&gt; Parser (Path, Error) a
+</span><span class="hs-identifier hs-var">embedP</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">64</span></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679043162"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">(Parser (Path, Error) UUID -&gt; Parser (Path, Error) UUID)
+-&gt; Parser (Path, Error) UUID -&gt; Parser (Path, Error) UUID
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-26"></span><span>             </span><span id="local-6989586621679043167"><span class="annot"><a href="#local-6989586621679043167"><span class="hs-identifier hs-var">ro</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Int -&gt; (Path, Error) -&gt; Parser (Path, Error) ByteString
+forall end. Int -&gt; end -&gt; Parser end ByteString
+</span><span class="hs-identifier hs-var">Lathe.byteString</span></span><span> </span><span class="annot"><span class="annottext">Int
+</span><span class="hs-number">36</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679043162"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Error
+</span><span class="hs-identifier hs-var">AbruptEnd</span></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>             </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="hs-identifier hs-type">UUID.fromASCIIBytes</span></span><span> </span><span class="annot"><a href="#local-6989586621679043167"><span class="hs-identifier hs-type">ro</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-28"></span><span>               </span><span class="annot"><span class="annottext">Maybe UUID
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-29"></span><span>                 </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679043171"><span class="annot"><span class="annottext">malformed :: String
+</span><a href="#local-6989586621679043171"><span class="hs-identifier hs-var hs-var">malformed</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Expected UUID encoded as xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx&quot;</span></span><span>
+</span><span id="line-30"></span><span>                 </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) UUID
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679043162"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><span class="hs-identifier hs-var">Malformed</span></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><span class="hs-identifier hs-var">Benign</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679043171"><span class="hs-identifier hs-var">malformed</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>               </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679043175"><span class="annot"><span class="annottext">UUID
+</span><a href="#local-6989586621679043175"><span class="hs-identifier hs-var">u</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-32"></span><span>                 </span><span id="local-6989586621679043176"><span class="annot"><a href="#local-6989586621679043176"><span class="hs-identifier hs-var">end</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Parser (Path, Error) Bool
+forall never. Parser never Bool
+</span><span class="hs-identifier hs-var">atEnd</span></span><span>
+</span><span id="line-33"></span><span>                 </span><span class="hs-keyword">if</span><span> </span><span class="annot"><a href="#local-6989586621679043176"><span class="hs-identifier hs-type">end</span></a></span><span>
+</span><span id="line-34"></span><span>                   </span><span class="hs-keyword">then</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><a href="#local-6989586621679043175"><span class="hs-identifier hs-type">u</span></a></span><span>
+</span><span id="line-35"></span><span>                   </span><span class="hs-keyword">else</span><span> </span><span class="annot"><span class="hs-identifier hs-type">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679043162"><span class="hs-identifier hs-type">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Malformed</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Benign</span></span><span> </span><span class="annot"><span class="hs-string">&quot;Found trailing data after the UUID&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-36"></span><span>
+</span><span id="line-37"></span><span>      </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-38"></span><span>        </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679043180"><span class="annot"><span class="annottext">bits' :: Bitmask
+</span><a href="#local-6989586621679043180"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679043163"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; Bitmask -&gt; Bitmask
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><span class="hs-identifier hs-var">StringBit</span></span><span>
+</span><span id="line-39"></span><span>        </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">(Path, Error) -&gt; Parser (Path, Error) UUID
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679043162"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><span class="hs-identifier hs-var">Mismatch</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679043180"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679043164"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-40"></span></pre></body></html>

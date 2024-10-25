@@ -1,0 +1,408 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE BangPatterns
+           , GADTs
+           , ScopedTypeVariables
+           , TemplateHaskellQuotes
+           , UnboxedTuples #-}</span><span>
+</span><span id="line-6"></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">module</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html"><span class="hs-identifier">Codec.JSON.Decoder.Object.TH</span></a></span><span>
+</span><span id="line-8"></span><span>  </span><span class="hs-special">(</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier">PairsQ</span></a></span><span>
+</span><span id="line-9"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#pairsQ"><span class="hs-identifier">pairsQ</span></a></span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Internal</span></a></span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.TH.html"><span class="hs-identifier">Codec.JSON.Decoder.Internal.TH</span></a></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html"><span class="hs-identifier">Codec.JSON.Decoder.Object.Internal</span></a></span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.RadixTree.Word8.Strict</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">RadixTree</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.RadixTree.Word8.Strict</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Radix</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.RadixTree.Word8.Strict.Pointer</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Radix</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.RadixTree.Word8.Strict.TH</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Radix</span></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">Strict</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">unpack</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">GHC.Exts</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Any</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Language.Haskell.TH.Syntax</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Parser.Lathe</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span>           </span><span class="annot"><span class="hs-identifier">Unsafe.Coerce</span></span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="annot"><span class="hs-comment">-- | Precompiled applicative object parser.</span></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">data</span><span> </span><span id="PairsQ"><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-var">PairsQ</span></a></span></span><span> </span><span id="local-6989586621679099150"><span class="annot"><a href="#local-6989586621679099150"><span class="hs-identifier hs-type">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679099301"><span class="annot"><a href="#local-6989586621679099301"><span class="hs-identifier hs-type">x</span></a></span></span><span class="hs-operator">.</span><span> </span><span id="PairsAp"><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsAp"><span class="hs-identifier hs-var">PairsAp</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679099301"><span class="hs-identifier hs-type">x</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679099150"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099301"><span class="hs-identifier hs-type">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-32"></span><span>              </span><span class="hs-glyph">|</span><span> </span><span class="hs-keyword">forall</span><span> </span><span id="local-6989586621679099303"><span class="annot"><a href="#local-6989586621679099303"><span class="hs-identifier hs-type">x</span></a></span></span><span class="hs-operator">.</span><span> </span><span id="PairsMap"><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsMap"><span class="hs-identifier hs-var">PairsMap</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Code</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="#local-6989586621679099303"><span class="hs-identifier hs-type">x</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="#local-6989586621679099150"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099303"><span class="hs-identifier hs-type">x</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>              </span><span class="hs-glyph">|</span><span> </span><span id="PairsOne"><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsOne"><span class="hs-identifier hs-var">PairsOne</span></a></span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Qualifier"><span class="hs-identifier hs-type">Qualifier</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099150"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Code</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099150"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-34"></span><span>              </span><span class="hs-glyph">|</span><span> </span><span id="PairsPure"><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsPure"><span class="hs-identifier hs-var">PairsPure</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Code</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><a href="#local-6989586621679099150"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-35"></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.TH.html#FunctorQ"><span class="hs-identifier hs-type">FunctorQ</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-37"></span><span>  </span><span id="local-6989586621679099310"><span class="annot"><span class="annottext">fmapQ :: forall a b. Code Q (a -&gt; b) -&gt; PairsQ a -&gt; PairsQ b
+</span><a href="#local-6989586621679099310"><span class="hs-identifier hs-var hs-var hs-var">fmapQ</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Code Q (a -&gt; b) -&gt; PairsQ a -&gt; PairsQ b
+forall a x. Code Q (x -&gt; a) -&gt; PairsQ x -&gt; PairsQ a
+</span><a href="Codec.JSON.Decoder.Object.TH.html#PairsMap"><span class="hs-identifier hs-var">PairsMap</span></a></span><span>
+</span><span id="line-38"></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.TH.html#ApplyQ"><span class="hs-identifier hs-type">ApplyQ</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-40"></span><span>  </span><span id="local-6989586621679099317"><span class="annot"><span class="annottext">|*| :: forall a b. PairsQ (a -&gt; b) -&gt; PairsQ a -&gt; PairsQ b
+</span><a href="#local-6989586621679099317"><span class="hs-operator hs-var hs-var hs-var">(|*|)</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PairsQ (a -&gt; b) -&gt; PairsQ a -&gt; PairsQ b
+forall a x. PairsQ (x -&gt; a) -&gt; PairsQ x -&gt; PairsQ a
+</span><a href="Codec.JSON.Decoder.Object.TH.html#PairsAp"><span class="hs-identifier hs-var">PairsAp</span></a></span><span>
+</span><span id="line-41"></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.TH.html#ApplicativeQ"><span class="hs-identifier hs-type">ApplicativeQ</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-43"></span><span>  </span><span id="local-6989586621679099324"><span class="annot"><span class="annottext">pureQ :: forall a. Code Q a -&gt; PairsQ a
+</span><a href="#local-6989586621679099324"><span class="hs-identifier hs-var hs-var hs-var">pureQ</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Code Q a -&gt; PairsQ a
+forall a. Code Q a -&gt; PairsQ a
+</span><a href="Codec.JSON.Decoder.Object.TH.html#PairsPure"><span class="hs-identifier hs-var">PairsPure</span></a></span><span>
+</span><span id="line-44"></span><span>
+</span><span id="line-45"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.TH.html#PairQ"><span class="hs-identifier hs-type">PairQ</span></a></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-46"></span><span>  </span><span id="local-6989586621679099330"><span class="annot"><span class="annottext">pairQ :: forall a. Text -&gt; Code Q (Decoder a) -&gt; PairsQ a
+</span><a href="#local-6989586621679099330"><span class="hs-identifier hs-var hs-var hs-var">pairQ</span></a></span></span><span>      </span><span id="local-6989586621679099332"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099332"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679099333"><span class="annot"><span class="annottext">Code Q (Decoder a)
+</span><a href="#local-6989586621679099333"><span class="hs-identifier hs-var">one</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text -&gt; Qualifier a -&gt; Code Q (Decoder a) -&gt; PairsQ a
+forall a. Text -&gt; Qualifier a -&gt; Code Q (Decoder a) -&gt; PairsQ a
+</span><a href="Codec.JSON.Decoder.Object.TH.html#PairsOne"><span class="hs-identifier hs-var">PairsOne</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099332"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">Qualifier a
+forall a. Qualifier a
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#Mandatory"><span class="hs-identifier hs-var">Mandatory</span></a></span><span> </span><span class="annot"><span class="annottext">Code Q (Decoder a)
+</span><a href="#local-6989586621679099333"><span class="hs-identifier hs-var">one</span></a></span><span>
+</span><span id="line-47"></span><span>  </span><span id="local-6989586621679099335"><span class="annot"><span class="annottext">pairMaybeQ :: forall a. Text -&gt; Code Q (Decoder (Maybe a)) -&gt; PairsQ (Maybe a)
+</span><a href="#local-6989586621679099335"><span class="hs-identifier hs-var hs-var hs-var">pairMaybeQ</span></a></span></span><span> </span><span id="local-6989586621679099337"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099337"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679099338"><span class="annot"><span class="annottext">Code Q (Decoder (Maybe a))
+</span><a href="#local-6989586621679099338"><span class="hs-identifier hs-var">one</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+-&gt; Qualifier (Maybe a)
+-&gt; Code Q (Decoder (Maybe a))
+-&gt; PairsQ (Maybe a)
+forall a. Text -&gt; Qualifier a -&gt; Code Q (Decoder a) -&gt; PairsQ a
+</span><a href="Codec.JSON.Decoder.Object.TH.html#PairsOne"><span class="hs-identifier hs-var">PairsOne</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099337"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">Qualifier (Maybe a)
+forall a1. Qualifier (Maybe a1)
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#Optional"><span class="hs-identifier hs-var">Optional</span></a></span><span>  </span><span class="annot"><span class="annottext">Code Q (Decoder (Maybe a))
+</span><a href="#local-6989586621679099338"><span class="hs-identifier hs-var">one</span></a></span><span>
+</span><span id="line-48"></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- | Parse a JSON object as a tuple of key/value pairs.</span><span>
+</span><span id="line-52"></span><span class="hs-comment">--</span><span>
+</span><span id="line-53"></span><span class="hs-comment">--   In presence of duplicate keys in the supplied JSON object prefers earlier entries.</span><span>
+</span><span id="line-54"></span><span id="local-6989586621679099173"><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#pairsQ"><span class="hs-identifier hs-type">pairsQ</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099173"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Code</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099173"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-55"></span><span id="pairsQ"><span class="annot"><span class="annottext">pairsQ :: forall a. PairsQ a -&gt; Code Q (Decoder a)
+</span><a href="Codec.JSON.Decoder.Object.TH.html#pairsQ"><span class="hs-identifier hs-var hs-var">pairsQ</span></a></span></span><span> </span><span id="local-6989586621679099361"><span class="annot"><span class="annottext">PairsQ a
+</span><a href="#local-6989586621679099361"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-56"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679099362"><span class="annot"><span class="annottext">proto :: Q (RadixTree (Code Q State))
+</span><a href="#local-6989586621679099362"><span class="hs-identifier hs-var hs-var">proto</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+-&gt; PairsQ a -&gt; Q (RadixTree (Code Q State))
+forall a.
+RadixTree (Code Q State)
+-&gt; PairsQ a -&gt; Q (RadixTree (Code Q State))
+</span><a href="Codec.JSON.Decoder.Object.TH.html#packPairsQ"><span class="hs-identifier hs-var">packPairsQ</span></a></span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+forall a. RadixTree a
+</span><span class="hs-identifier hs-var">Radix.empty</span></span><span> </span><span class="annot"><span class="annottext">PairsQ a
+</span><a href="#local-6989586621679099361"><span class="hs-identifier hs-var">x</span></a></span><span>
+</span><span id="line-57"></span><span>
+</span><span id="line-58"></span><span>  </span><span class="hs-keyword">in</span><span> </span><span class="hs-special">[||</span><span> </span><span class="annot"><span class="annottext">(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+forall a.
+(Path -&gt; Bitmask -&gt; K -&gt; Parser (Path, Error) a) -&gt; Decoder a
+</span><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-var">Decoder</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; a -&gt; b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679099366"><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099366"><span class="hs-identifier hs-var">path</span></a></span></span><span> </span><span id="local-6989586621679099367"><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679099367"><span class="hs-identifier hs-var">bits</span></a></span></span><span> </span><span id="local-6989586621679099368"><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679099368"><span class="hs-identifier hs-var">k</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-59"></span><span>           </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679099368"><span class="hs-identifier hs-var">k</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-60"></span><span>             </span><span class="annot"><span class="annottext">K
+</span><a href="Codec.JSON.Decoder.Internal.html#O"><span class="hs-identifier hs-var">O</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-61"></span><span>               </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679099370"><span class="annot"><span class="annottext">r :: p
+</span><a href="#local-6989586621679099370"><span class="hs-identifier hs-var hs-var hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">$$</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Q (Code Q (RadixTree State)) -&gt; Code Q (RadixTree State)
+forall (m :: * -&gt; *) a. Monad m =&gt; m (Code m a) -&gt; Code m a
+</span><span class="hs-identifier hs-var">joinCode</span></span><span> </span><span class="annot"><span class="annottext">(Q (Code Q (RadixTree State)) -&gt; Code Q (RadixTree State))
+-&gt; Q (Code Q (RadixTree State)) -&gt; Code Q (RadixTree State)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State) -&gt; Code Q (RadixTree State)
+forall (m :: * -&gt; *) a.
+Quote m =&gt;
+RadixTree (Code m a) -&gt; Code m (RadixTree a)
+</span><span class="hs-identifier hs-var">Radix.sequenceCode</span></span><span> </span><span class="annot"><span class="annottext">(RadixTree (Code Q State) -&gt; Code Q (RadixTree State))
+-&gt; Q (RadixTree (Code Q State)) -&gt; Q (Code Q (RadixTree State))
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">Q (RadixTree (Code Q State))
+</span><a href="#local-6989586621679099362"><span class="hs-identifier hs-var">proto</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-62"></span><span>               </span><span id="local-6989586621679099374"><span class="annot"><a href="#local-6989586621679099374"><span class="hs-identifier hs-var">r'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Path -&gt; RadixTree State -&gt; Parser (Path, Error) (RadixTree State)
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#parsePairsA"><span class="hs-identifier hs-var">parsePairsA</span></a></span><span> </span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099366"><span class="hs-identifier hs-var">path</span></a></span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679099370"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-63"></span><span>               </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">$$</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Q (Code Q (RadixTree State -&gt; Either Text a))
+-&gt; Code Q (RadixTree State -&gt; Either Text a)
+forall (m :: * -&gt; *) a. Monad m =&gt; m (Code m a) -&gt; Code m a
+</span><span class="hs-identifier hs-var">joinCode</span></span><span> </span><span class="annot"><span class="annottext">(Q (Code Q (RadixTree State -&gt; Either Text a))
+ -&gt; Code Q (RadixTree State -&gt; Either Text a))
+-&gt; Q (Code Q (RadixTree State -&gt; Either Text a))
+-&gt; Code Q (RadixTree State -&gt; Either Text a)
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span> </span><span id="local-6989586621679099376"><span class="annot"><a href="#local-6989586621679099376"><span class="hs-identifier hs-var">p</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Q (RadixTree (Code Q State))
+</span><a href="#local-6989586621679099362"><span class="hs-identifier hs-var">proto</span></a></span><span class="hs-special">;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">pure</span></span><span> </span><span class="annot"><span class="hs-operator hs-type">$</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#applyPairsQ"><span class="hs-identifier hs-type">applyPairsQ</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099376"><span class="hs-identifier hs-type">p</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099361"><span class="hs-identifier hs-type">x</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><a href="#local-6989586621679099374"><span class="hs-identifier hs-type">r'</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-64"></span><span>                 </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679099378"><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679099378"><span class="hs-identifier hs-var">a</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">a -&gt; f a
+forall a. a -&gt; f a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679099378"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-65"></span><span>                 </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679099379"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099379"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-66"></span><span>                   </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679099380"><span class="annot"><span class="annottext">msg :: String
+</span><a href="#local-6989586621679099380"><span class="hs-identifier hs-var hs-var">msg</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Key &quot;</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; a -&gt; b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; ShowS
+forall a. Show a =&gt; a -&gt; ShowS
+</span><span class="hs-identifier hs-var">shows</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; String
+</span><span class="hs-identifier hs-var">Strict.unpack</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099379"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-67"></span><span>                                                   </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; not found&quot;</span></span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span>                   </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">e -&gt; Parser e a
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099366"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Gravity -&gt; String -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Malformed"><span class="hs-identifier hs-var">Malformed</span></a></span><span> </span><span class="annot"><span class="annottext">Gravity
+</span><a href="Codec.JSON.Decoder.Internal.html#Benign"><span class="hs-identifier hs-var">Benign</span></a></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679099380"><span class="hs-identifier hs-var">msg</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span>             </span><span class="annot"><span class="annottext">K
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-72"></span><span>               </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679099386"><span class="annot"><span class="annottext">bits' :: a
+</span><a href="#local-6989586621679099386"><span class="hs-identifier hs-var hs-var">bits'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="#local-6989586621679099367"><span class="hs-identifier hs-var">bits</span></a></span><span> </span><span class="annot"><span class="annottext">a -&gt; a -&gt; a
+forall a. Semigroup a =&gt; a -&gt; a -&gt; a
+</span><span class="hs-operator hs-var">&lt;&gt;</span></span><span> </span><span class="annot"><span class="annottext">Bitmask
+</span><a href="Codec.JSON.Decoder.Internal.html#ObjectBit"><span class="hs-identifier hs-var">ObjectBit</span></a></span><span>
+</span><span id="line-73"></span><span>               </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">e -&gt; Parser e a
+forall e a. e -&gt; Parser e a
+</span><span class="hs-identifier hs-var">err</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Path
+</span><a href="#local-6989586621679099366"><span class="hs-identifier hs-var">path</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">Bitmask -&gt; K -&gt; Error
+</span><a href="Codec.JSON.Decoder.Internal.html#Mismatch"><span class="hs-identifier hs-var">Mismatch</span></a></span><span> </span><span class="annot"><span class="annottext">a
+</span><a href="#local-6989586621679099386"><span class="hs-identifier hs-var">bits'</span></a></span><span> </span><span class="annot"><span class="annottext">K
+</span><a href="#local-6989586621679099368"><span class="hs-identifier hs-var">k</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-74"></span><span>      </span><span class="hs-special">||]</span><span>
+</span><span id="line-75"></span><span>
+</span><span id="line-76"></span><span>
+</span><span id="line-77"></span><span>
+</span><span id="line-78"></span><span id="local-6989586621679099184"><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#packPairsQ"><span class="hs-identifier hs-type">packPairsQ</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Code</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#State"><span class="hs-identifier hs-type">State</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099184"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Code</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#State"><span class="hs-identifier hs-type">State</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span></span><span>
+</span><span id="line-79"></span><span id="packPairsQ"><span class="annot"><span class="annottext">packPairsQ :: forall a.
+RadixTree (Code Q State)
+-&gt; PairsQ a -&gt; Q (RadixTree (Code Q State))
+</span><a href="Codec.JSON.Decoder.Object.TH.html#packPairsQ"><span class="hs-identifier hs-var hs-var">packPairsQ</span></a></span></span><span> </span><span id="local-6989586621679099396"><span class="annot"><span class="annottext">RadixTree (Code Q State)
+</span><a href="#local-6989586621679099396"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span id="local-6989586621679099397"><span class="annot"><span class="annottext">PairsQ a
+</span><a href="#local-6989586621679099397"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-80"></span><span>  </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">PairsQ a
+</span><a href="#local-6989586621679099397"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-81"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsAp"><span class="hs-identifier hs-type">PairsAp</span></a></span><span> </span><span id="local-6989586621679099399"><span class="annot"><span class="annottext">PairsQ (x -&gt; a)
+</span><a href="#local-6989586621679099399"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679099400"><span class="annot"><span class="annottext">PairsQ x
+</span><a href="#local-6989586621679099400"><span class="hs-identifier hs-var">b</span></a></span></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-82"></span><span>      </span><span id="local-6989586621679099401"><span class="annot"><a href="#local-6989586621679099401"><span class="hs-identifier hs-var">r'</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+-&gt; PairsQ (x -&gt; a) -&gt; Q (RadixTree (Code Q State))
+forall a.
+RadixTree (Code Q State)
+-&gt; PairsQ a -&gt; Q (RadixTree (Code Q State))
+</span><a href="Codec.JSON.Decoder.Object.TH.html#packPairsQ"><span class="hs-identifier hs-var">packPairsQ</span></a></span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+</span><a href="#local-6989586621679099396"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">PairsQ (x -&gt; a)
+</span><a href="#local-6989586621679099399"><span class="hs-identifier hs-var">g</span></a></span><span>
+</span><span id="line-83"></span><span>      </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#packPairsQ"><span class="hs-identifier hs-type">packPairsQ</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099401"><span class="hs-identifier hs-type">r'</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099400"><span class="hs-identifier hs-type">b</span></a></span><span>
+</span><span id="line-84"></span><span>
+</span><span id="line-85"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsMap"><span class="hs-identifier hs-type">PairsMap</span></a></span><span> </span><span class="annot"><span class="annottext">Code Q (x -&gt; a)
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679099402"><span class="annot"><span class="annottext">PairsQ x
+</span><a href="#local-6989586621679099402"><span class="hs-identifier hs-var">b</span></a></span></span><span>       </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+-&gt; PairsQ x -&gt; Q (RadixTree (Code Q State))
+forall a.
+RadixTree (Code Q State)
+-&gt; PairsQ a -&gt; Q (RadixTree (Code Q State))
+</span><a href="Codec.JSON.Decoder.Object.TH.html#packPairsQ"><span class="hs-identifier hs-var">packPairsQ</span></a></span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+</span><a href="#local-6989586621679099396"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">PairsQ x
+</span><a href="#local-6989586621679099402"><span class="hs-identifier hs-var">b</span></a></span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsOne"><span class="hs-identifier hs-type">PairsOne</span></a></span><span> </span><span id="local-6989586621679099403"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099403"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span class="annot"><span class="annottext">Qualifier a
+</span><span class="hs-identifier">_</span></span><span> </span><span id="local-6989586621679099404"><span class="annot"><span class="annottext">Code Q (Decoder a)
+</span><a href="#local-6989586621679099404"><span class="hs-identifier hs-var">dec</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-88"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Text -&gt; RadixTree (Code Q State) -&gt; Maybe (Code Q State)
+forall a. Text -&gt; RadixTree a -&gt; Maybe a
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#lookupText"><span class="hs-identifier hs-var">lookupText</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099403"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+</span><a href="#local-6989586621679099396"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-89"></span><span>        </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span class="annot"><span class="annottext">Code Q State
+</span><span class="hs-identifier">_</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Q (RadixTree (Code Q State))
+forall a. String -&gt; Q a
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Q (RadixTree (Code Q State)))
+-&gt; String -&gt; Q (RadixTree (Code Q State))
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+</span><span class="hs-identifier hs-var">showString</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;Malformed applicative parser: key &quot;</span></span><span>
+</span><span id="line-90"></span><span>                            </span><span class="annot"><span class="annottext">ShowS -&gt; ShowS
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. Show a =&gt; a -&gt; ShowS
+</span><span class="hs-identifier hs-var">shows</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; String
+</span><span class="hs-identifier hs-var">Strict.unpack</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099403"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot; is mentioned multiple times&quot;</span></span><span>
+</span><span id="line-91"></span><span>        </span><span class="annot"><span class="annottext">Maybe (Code Q State)
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-92"></span><span>          </span><span class="hs-keyword">let</span><span> </span><span class="hs-glyph">!</span><span id="local-6989586621679099406"><span class="annot"><span class="annottext">a :: Code Q State
+</span><a href="#local-6989586621679099406"><span class="hs-identifier hs-var hs-var">a</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[||</span><span> </span><span class="annot"><span class="annottext">Decoder Any -&gt; State
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#Unsaturated"><span class="hs-identifier hs-var">Unsaturated</span></a></span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; a -&gt; b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679099408"><span class="annot"><span class="annottext">a -&gt; b
+Decoder x -&gt; Decoder Any
+forall {x}. Decoder x -&gt; Decoder Any
+forall a b. a -&gt; b
+</span><span class="hs-identifier hs-var">unsafeCoerce</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099408"><span class="hs-identifier hs-type">x</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Any</span></span></span><span class="hs-special">)</span><span> </span><span class="hs-special">$$</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Code Q (Decoder a)
+</span><a href="#local-6989586621679099404"><span class="hs-identifier hs-var">dec</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">||]</span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span>              </span><span class="hs-glyph">!</span><span id="local-6989586621679099410"><span class="annot"><span class="annottext">r' :: RadixTree (Code Q State)
+</span><a href="#local-6989586621679099410"><span class="hs-identifier hs-var hs-var">r'</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Text
+-&gt; Code Q State
+-&gt; RadixTree (Code Q State)
+-&gt; RadixTree (Code Q State)
+forall a. Text -&gt; a -&gt; RadixTree a -&gt; RadixTree a
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#insertText"><span class="hs-identifier hs-var">insertText</span></a></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099403"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="annot"><span class="annottext">Code Q State
+</span><a href="#local-6989586621679099406"><span class="hs-identifier hs-var">a</span></a></span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+</span><a href="#local-6989586621679099396"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-95"></span><span>
+</span><span id="line-96"></span><span>          </span><span class="hs-keyword">in</span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State) -&gt; Q (RadixTree (Code Q State))
+forall a. a -&gt; Q a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+</span><a href="#local-6989586621679099410"><span class="hs-identifier hs-var">r'</span></a></span><span>
+</span><span id="line-97"></span><span>
+</span><span id="line-98"></span><span>    </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsPure"><span class="hs-identifier hs-type">PairsPure</span></a></span><span> </span><span class="annot"><span class="annottext">Code Q a
+</span><span class="hs-identifier">_</span></span><span>        </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State) -&gt; Q (RadixTree (Code Q State))
+forall a. a -&gt; Q a
+forall (f :: * -&gt; *) a. Applicative f =&gt; a -&gt; f a
+</span><span class="hs-identifier hs-var">pure</span></span><span> </span><span class="annot"><span class="annottext">RadixTree (Code Q State)
+</span><a href="#local-6989586621679099396"><span class="hs-identifier hs-var">r</span></a></span><span>
+</span><span id="line-99"></span><span>
+</span><span id="line-100"></span><span>
+</span><span id="line-101"></span><span>
+</span><span id="line-102"></span><span id="local-6989586621679099209"><span id="local-6989586621679099210"><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#applyPairsQ"><span class="hs-identifier hs-type">applyPairsQ</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="annot"><a href="#local-6989586621679099209"><span class="hs-identifier hs-type">any</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099210"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Code</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#State"><span class="hs-identifier hs-type">State</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><a href="#local-6989586621679099210"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span></span><span>
+</span><span id="line-103"></span><span id="applyPairsQ"><span class="annot"><span class="annottext">applyPairsQ :: forall any a.
+RadixTree any
+-&gt; PairsQ a -&gt; Code Q (RadixTree State -&gt; Either Text a)
+</span><a href="Codec.JSON.Decoder.Object.TH.html#applyPairsQ"><span class="hs-identifier hs-var hs-var">applyPairsQ</span></a></span></span><span> </span><span id="local-6989586621679099412"><span class="annot"><span class="annottext">RadixTree any
+</span><a href="#local-6989586621679099412"><span class="hs-identifier hs-var">proto</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">PairsQ a -&gt; Code Q (RadixTree State -&gt; Either Text a)
+forall a. PairsQ a -&gt; Code Q (RadixTree State -&gt; Either Text a)
+</span><a href="#local-6989586621679099413"><span class="hs-identifier hs-var">go</span></a></span><span>
+</span><span id="line-104"></span><span>  </span><span class="hs-keyword">where</span><span>
+</span><span id="line-105"></span><span>    </span><span id="local-6989586621679099245"><span class="annot"><a href="#local-6989586621679099413"><span class="hs-identifier hs-type">go</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsQ"><span class="hs-identifier hs-type">PairsQ</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099245"><span class="hs-identifier hs-type">a</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Code</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">RadixTree</span></span><span> </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#State"><span class="hs-identifier hs-type">State</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><a href="#local-6989586621679099245"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span>
+</span><span id="line-106"></span><span>    </span><span id="local-6989586621679099413"><span class="annot"><span class="annottext">go :: forall a. PairsQ a -&gt; Code Q (RadixTree State -&gt; Either Text a)
+</span><a href="#local-6989586621679099413"><span class="hs-identifier hs-var hs-var">go</span></a></span></span><span> </span><span id="local-6989586621679099424"><span class="annot"><span class="annottext">PairsQ a
+</span><a href="#local-6989586621679099424"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>
+</span><span id="line-107"></span><span>      </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">PairsQ a
+</span><a href="#local-6989586621679099424"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-108"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsAp"><span class="hs-identifier hs-type">PairsAp</span></a></span><span> </span><span id="local-6989586621679099428"><span class="annot"><span class="annottext">PairsQ (x -&gt; a)
+</span><a href="#local-6989586621679099428"><span class="hs-identifier hs-var">g</span></a></span></span><span> </span><span id="local-6989586621679099429"><span class="annot"><span class="annottext">PairsQ x
+</span><a href="#local-6989586621679099429"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[||</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679099430"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679099430"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">$$</span><span class="hs-special">(</span><span class="annot"><span class="annottext">PairsQ (x -&gt; a) -&gt; Code Q (RadixTree State -&gt; Either Text (x -&gt; a))
+forall a. PairsQ a -&gt; Code Q (RadixTree State -&gt; Either Text a)
+</span><a href="#local-6989586621679099413"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">PairsQ (x -&gt; a)
+</span><a href="#local-6989586621679099428"><span class="hs-identifier hs-var">g</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679099430"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="annot"><span class="annottext">f (a -&gt; b) -&gt; f a -&gt; f b
+forall a b. f (a -&gt; b) -&gt; f a -&gt; f b
+forall (f :: * -&gt; *) a b. Applicative f =&gt; f (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;*&gt;</span></span><span> </span><span class="hs-special">$$</span><span class="hs-special">(</span><span class="annot"><span class="annottext">PairsQ x -&gt; Code Q (RadixTree State -&gt; Either Text x)
+forall a. PairsQ a -&gt; Code Q (RadixTree State -&gt; Either Text a)
+</span><a href="#local-6989586621679099413"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">PairsQ x
+</span><a href="#local-6989586621679099429"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679099430"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="hs-special">||]</span><span>
+</span><span id="line-109"></span><span>
+</span><span id="line-110"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsMap"><span class="hs-identifier hs-type">PairsMap</span></a></span><span> </span><span id="local-6989586621679099434"><span class="annot"><span class="annottext">Code Q (x -&gt; a)
+</span><a href="#local-6989586621679099434"><span class="hs-identifier hs-var">f</span></a></span></span><span> </span><span id="local-6989586621679099435"><span class="annot"><span class="annottext">PairsQ x
+</span><a href="#local-6989586621679099435"><span class="hs-identifier hs-var">b</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[||</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679099436"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679099436"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">$$</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Code Q (x -&gt; a)
+</span><a href="#local-6989586621679099434"><span class="hs-identifier hs-var">f</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; f a -&gt; f b
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="hs-special">$$</span><span class="hs-special">(</span><span class="annot"><span class="annottext">PairsQ x -&gt; Code Q (RadixTree State -&gt; Either Text x)
+forall a. PairsQ a -&gt; Code Q (RadixTree State -&gt; Either Text a)
+</span><a href="#local-6989586621679099413"><span class="hs-identifier hs-var">go</span></a></span><span> </span><span class="annot"><span class="annottext">PairsQ x
+</span><a href="#local-6989586621679099435"><span class="hs-identifier hs-var">b</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679099436"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="hs-special">||]</span><span>
+</span><span id="line-111"></span><span>
+</span><span id="line-112"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsOne"><span class="hs-identifier hs-type">PairsOne</span></a></span><span> </span><span id="local-6989586621679099437"><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099437"><span class="hs-identifier hs-var">key</span></a></span></span><span> </span><span id="local-6989586621679099438"><span class="annot"><span class="annottext">Qualifier a
+</span><a href="#local-6989586621679099438"><span class="hs-identifier hs-var">qual</span></a></span></span><span> </span><span class="hs-special">(</span><span id="local-6989586621679099439"><span class="annot"><span class="annottext">Code Q (Decoder a)
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Code</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Q</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="Codec.JSON.Decoder.Internal.html#Decoder"><span class="hs-identifier hs-type">Decoder</span></a></span><span> </span><span class="annot"><a href="#local-6989586621679099439"><span class="hs-identifier hs-type">a</span></a></span><span class="hs-special">)</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-113"></span><span>          </span><span class="hs-special">[||</span><span> </span><span class="hs-glyph">\</span><span id="local-6989586621679099440"><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679099440"><span class="hs-identifier hs-var">r</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-114"></span><span>                </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679099441"><span class="annot"><span class="annottext">malformed :: a
+</span><a href="#local-6989586621679099441"><span class="hs-identifier hs-var hs-var">malformed</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">e -&gt; a
+forall a e. (?callStack::CallStack, Exception e) =&gt; e -&gt; a
+</span><span class="hs-identifier hs-var">throw</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; a -&gt; b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">MalformedParser
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#MalformedParser"><span class="hs-identifier hs-var">MalformedParser</span></a></span><span>
+</span><span id="line-115"></span><span>                </span><span class="hs-keyword">in</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">a -&gt; Pointer -&gt; RadixTree a -&gt; a
+forall a. a -&gt; Pointer -&gt; RadixTree a -&gt; a
+</span><span class="hs-identifier hs-var">Radix.follow</span></span><span>
+</span><span id="line-116"></span><span>                          </span><span class="annot"><span class="annottext">a
+forall {a}. a
+</span><a href="#local-6989586621679099441"><span class="hs-identifier hs-var">malformed</span></a></span><span>
+</span><span id="line-117"></span><span>                          </span><span class="hs-special">$$</span><span class="hs-special">(</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Feed -&gt; RadixTree any -&gt; Maybe Pointer
+forall a. Feed -&gt; RadixTree a -&gt; Maybe Pointer
+</span><span class="hs-identifier hs-var">Radix.pointer</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Text -&gt; Feed
+</span><span class="hs-identifier hs-var">Radix.feedText</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099437"><span class="hs-identifier hs-var">key</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">RadixTree any
+</span><a href="#local-6989586621679099412"><span class="hs-identifier hs-var">proto</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-118"></span><span>                                </span><span class="annot"><span class="annottext">Maybe Pointer
+</span><span class="hs-identifier hs-var">Nothing</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Q (Code Q Pointer) -&gt; Code Q Pointer
+forall (m :: * -&gt; *) a. Monad m =&gt; m (Code m a) -&gt; Code m a
+</span><span class="hs-identifier hs-var">joinCode</span></span><span> </span><span class="annot"><span class="annottext">(Q (Code Q Pointer) -&gt; Code Q Pointer)
+-&gt; Q (Code Q Pointer) -&gt; Code Q Pointer
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; Q (Code Q Pointer)
+forall a. String -&gt; Q a
+forall (m :: * -&gt; *) a. MonadFail m =&gt; String -&gt; m a
+</span><span class="hs-identifier hs-var">fail</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><span class="hs-string">&quot;A pointer fell through&quot;</span></span><span>
+</span><span id="line-119"></span><span>                                </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679099449"><span class="annot"><span class="annottext">Pointer
+</span><a href="#local-6989586621679099449"><span class="hs-identifier hs-var">ptr</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[||</span><span> </span><span class="annot"><span class="annottext">Pointer
+</span><a href="#local-6989586621679099449"><span class="hs-identifier hs-var">ptr</span></a></span><span> </span><span class="hs-special">||]</span><span>
+</span><span id="line-120"></span><span>                            </span><span class="hs-special">)</span><span>
+</span><span id="line-121"></span><span>                          </span><span class="annot"><span class="annottext">p
+</span><a href="#local-6989586621679099440"><span class="hs-identifier hs-var">r</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-122"></span><span>                                      </span><span class="hs-comment">-- Awkward coercion: no @a@ at this level.</span><span>
+</span><span id="line-123"></span><span>                     </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Saturated"><span class="hs-identifier hs-type">Saturated</span></a></span><span> </span><span id="local-6989586621679099451"><span class="annot"><span class="annottext">Any
+</span><a href="#local-6989586621679099451"><span class="hs-identifier hs-var">a</span></a></span></span><span>   </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; Either a b
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">(a -&gt; b) -&gt; a -&gt; b
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">a -&gt; b
+forall a b. a -&gt; b
+</span><span class="hs-identifier hs-var">unsafeCoerce</span></span><span> </span><span class="annot"><span class="annottext">a
+Any
+</span><a href="#local-6989586621679099451"><span class="hs-identifier hs-var">a</span></a></span><span>
+</span><span id="line-124"></span><span>                     </span><span class="annot"><a href="Codec.JSON.Decoder.Object.Internal.html#Unsaturated"><span class="hs-identifier hs-type">Unsaturated</span></a></span><span> </span><span class="annot"><span class="annottext">Decoder Any
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span>
+</span><span id="line-125"></span><span>                       </span><span class="hs-special">$$</span><span class="hs-special">(</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Qualifier a
+</span><a href="#local-6989586621679099438"><span class="hs-identifier hs-var">qual</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-126"></span><span>                             </span><span class="annot"><span class="annottext">Qualifier a
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#Mandatory"><span class="hs-identifier hs-var">Mandatory</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[||</span><span> </span><span class="annot"><span class="annottext">a -&gt; Either a b
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">Text
+</span><a href="#local-6989586621679099437"><span class="hs-identifier hs-var">key</span></a></span><span> </span><span class="hs-special">||]</span><span>
+</span><span id="line-127"></span><span>                             </span><span class="annot"><span class="annottext">Qualifier a
+</span><a href="Codec.JSON.Decoder.Object.Internal.html#Optional"><span class="hs-identifier hs-var">Optional</span></a></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[||</span><span> </span><span class="annot"><span class="annottext">b -&gt; Either a b
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">Maybe a
+forall a. Maybe a
+</span><span class="hs-identifier hs-var">Nothing</span></span><span> </span><span class="hs-special">||]</span><span>
+</span><span id="line-128"></span><span>                         </span><span class="hs-special">)</span><span>
+</span><span id="line-129"></span><span>           </span><span class="hs-special">||]</span><span>
+</span><span id="line-130"></span><span>
+</span><span id="line-131"></span><span>        </span><span class="annot"><a href="Codec.JSON.Decoder.Object.TH.html#PairsPure"><span class="hs-identifier hs-type">PairsPure</span></a></span><span> </span><span id="local-6989586621679099454"><span class="annot"><span class="annottext">Code Q a
+</span><a href="#local-6989586621679099454"><span class="hs-identifier hs-var">a</span></a></span></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-special">[||</span><span> </span><span class="hs-glyph">\</span><span class="annot"><span class="annottext">p
+</span><span class="hs-identifier">_</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">b -&gt; Either a b
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="hs-special">$$</span><span class="hs-special">(</span><span class="annot"><span class="annottext">Code Q a
+</span><a href="#local-6989586621679099454"><span class="hs-identifier hs-var">a</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">||]</span><span>
+</span><span id="line-132"></span></pre></body></html>
